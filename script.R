@@ -397,6 +397,26 @@ all_inds_drvs %>%
 # earlier birth cohort, perhaps from around 1978-9.
 # For males, it may have been since around 1980-1982
 
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives) & !is.na(highqual)) %>% 
+  select(highqual, sex, age, year, drives) %>% 
+  group_by(highqual, sex, age, year, drives) %>% 
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(highqual~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7))
+# This seems very informative: very large qualifications effect 
+# and sex*gender interaction. Possibly a recent cohoort effect 
 
 # Something similar, but with GHQ score?
 
