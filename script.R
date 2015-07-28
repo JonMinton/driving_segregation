@@ -36,8 +36,6 @@ require(ggplot2)
 require(lattice)
 
 
-
-
 # Data - individual  ------------------------------------------------------
 
 
@@ -75,7 +73,43 @@ fn <- function(x){
     ) | str_detect(
       nms , 
       "^[A-Z]{1}AGE$"
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}FEEND$" # Further education leaving age
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}FENOW$" # Still in further education
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}ISCED$" # ISCED level (highest qualification)
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}PLBORNC$" # Country of birth
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}RACE$" # ethnic group membership
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}RACEL$" # ethnic group membership (long version)
+    ) | str_detect(
+      nms , 
+      "^[A-Z]{1}NEIGH$" # neighbourhood good place to live
+    )  | str_detect(
+      nms , 
+      "^[A-Z]{1}OPNGBH[A-H]{1}$" # see below
     )
+  
+    
+#   OPNGBHA # feels belongs to neighbourhood
+#   OPNGBHB # local friends mean a lot
+#   OPNGBHC # advice obtanable locally
+#   OPNGBHD # can borrow things from neighbours
+#   OPNGBHE # willing to improve neighbourhood
+#   OPNGBHF # plan to stay in neighbourhood
+#   OPNGBHG # am similar to others in neighbourhood
+#   OPNGBHH # talk regularly to neighbourhood
+  
+
   
   out <- x[,selection]
   tmp <- names(out)
@@ -102,6 +136,42 @@ fn <- function(x){
     ghq = ifelse(ghq < 0, NA, ghq),
     age = ifelse(age < 0, NA, age)
   )
+  out$neigh <- NA
+  if ("NEIGH" %in% names(x)){
+    out$neigh <- recode(
+      x$NEIGH, 
+      "
+      1 = 'yes';
+      2 = 'no'; 
+      3 = 'mixed';
+      else = NA
+      ")
+  }
+  out$isced <- recode(
+    x$ISCED, 
+    "
+      0 = 'not defined';
+      1 = 'primary'; 
+      2 = 'low secondary';
+      3 = 'low sec-voc';
+      4 = 'hisec mivoc';
+      5 = 'higher voc';
+      6 = 'first degree';
+      7 = 'higher degree';
+      else = NA
+      "
+    )
+  
+  out$highqual <- recode(
+    out$isced,
+    "
+    c('not defined', 'primary', 'secondary') = 'no further';
+    c('low sec-voc', 'hisec mivoc', 'higher voc') = 'further vocational';
+    c('first degree', 'higher degree') = 'further non-vocational';
+    else = NA
+    "
+  )
+  
   out$drives <- NA
   if (x$WAVE[1] %in% c("A", "B")){
     out$drives[x$DRIVER==1] <- "yes"
@@ -111,12 +181,47 @@ fn <- function(x){
     out$drives[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
   }
   out$wave <- which(LETTERS %in% x$WAVE)
-  out <- out %>% select(pid, hid, wave, sex, age, drives, ghq)
+  out <- out %>% select(pid, hid, wave, sex, age, drives, ghq, neigh, isced, highqual)
   return(out)
 }
 
 all_inds_drvs <- ldply(all_inds_ss, fn) %>% tbl_df
 
+# Vis of individual level covariates --------------------------------------
+
+# prop who like neighbourhood by wave, sex and driver status
+all_inds_drvs %>% 
+  filter(!is.na(neigh) & !is.na(drives)) %>% 
+  group_by(sex, wave, drives, neigh) %>% 
+  tally %>% 
+  spread(neigh, n) %>% 
+  mutate(like_prop = yes/ (mixed + no + yes)) %>% 
+  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = drives, group = drives)) +
+  geom_line() + geom_point() + 
+  facet_wrap(~sex)
+
+#prop who like neighbourhood by wave, age group, sex and driver status
+all_inds_drvs %>% 
+  filter(!is.na(neigh) & !is.na(drives)) %>% 
+  mutate(age_grp = 
+           cut(age, 
+               breaks = c(17, 21, 26, 35, 50, 65, 80), 
+               include.lowest = T, 
+               labels = c("17-20", "21-25", "26-35", "36-49", "50-64", "65-79")
+           )
+  ) %>% 
+  filter(!is.na(age_grp)) %>% 
+  group_by(age_grp, sex, wave, drives, neigh) %>% 
+  tally %>% 
+  spread(neigh, n) %>% 
+  mutate(like_prop = yes/ (mixed + no + yes)) %>% 
+  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = drives, group = drives)) +
+  geom_line() + geom_point() + 
+  facet_grid(sex ~age_grp) + 
+  labs(x = "BPHS Wave", y = "proportion of respondents who like their neighbourhood")
+
+# This suggests there's a particularly high level of neighbourhood dissatisfaction amongst 
+# Males aged 26-35 who do not drive, particularly in wave 8 (H)
 
 
 all_inds_drvs %>% mutate(
@@ -132,9 +237,7 @@ all_inds_drvs %>% mutate(
     ) + facet_wrap(~ drives)
 
 
-
-# cumulative proportions by age who drive
-
+# Proportion who drive by age, all years (so double counting etx)
 all_inds_drvs %>%   
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
@@ -143,6 +246,19 @@ all_inds_drvs %>%
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
   geom_line(aes(x = age, y = driv_prop, colour = sex, group = sex))
+
+# Proportion who drive by age, faceted by wave 
+all_inds_drvs %>%   
+  filter(!is.na(sex)) %>% 
+  arrange(sex, age) %>% 
+  group_by(wave, sex, age) %>%
+  filter(age <= 80) %>% 
+  mutate(does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
+  ggplot(. ) +
+  geom_line(aes(x = age, y = driv_prop, colour = sex, group = sex)) + 
+  facet_wrap( ~ wave)
+# This suggests a much higher proportion of males who drive from mid 20s onwards
 
 
 all_inds_drvs %>%   
@@ -347,9 +463,29 @@ fn <- function(x){
   ) | str_detect(
     nms, 
     "^[A-Z]{1}HSTYPE$"
-    
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSROOM$"
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSGDN$" # accomm has terrace /garden
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSPRBH$" # noise from neighbours
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSPRBI$" # street noise 
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSPRBP$" # pollution and enviornmental problems 
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSPRBQ$" # vandalism or crime 
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}HSCTAX$" # council tax band 
   )
-  
+
   out <- x[,selection]
   tmp <- names(out)
   WAVE <- tmp[str_detect(tmp, pattern = "^[A-Z]{1}HID")]  %>% str_replace(., "HID", "")
@@ -409,7 +545,6 @@ fn <- function(x){
       18 = 'scotland';
       else = NA
       "
-      
     ),
     tenure = recode(
       tenure, 
@@ -424,7 +559,6 @@ fn <- function(x){
       8 = 'rented other';
       else = NA
       "
-      
     )
   )
 
