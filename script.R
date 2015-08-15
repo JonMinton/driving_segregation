@@ -245,6 +245,12 @@ fn <- function(x){
   ) | str_detect(
     nms, 
     "^[A-Z]{1}HSCTAX$" # council tax band 
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}FIEQFCB$" # Equivalised household income before housing costs 
+  ) | str_detect(
+    nms, 
+    "^[A-Z]{1}FIEQFCA$" # Equivalised household income after housing costs 
   )
   
   out <- x[,selection]
@@ -264,7 +270,11 @@ all_hhlds_ss <- llply(
 # variable with pid, wave, sex, car_driver (derived), age, ghq
 
 fn <- function(x){
-  out <- x %>% select(hid = HID, hstype =HSTYPE, region = REGION, tenure = TENURE)
+  out <- x %>% select(
+    hid = HID, hstype =HSTYPE, region = REGION, tenure = TENURE,
+    hh_income_before_hcosts = FIEQFCB,
+    hh_income_after_hcosts = FIEQFCA
+    )
   
   out <- out %>% mutate(
     hstype = recode(
@@ -330,18 +340,101 @@ fn <- function(x){
       else = NA
       "
     )
-    )
+  )
   
   out$wave <- which(LETTERS %in% x$WAVE)
-  out <- out %>% select(hid, wave, hstype, region, tenure, simpletenure)
+  out <- out %>% select(hid, wave, hstype, region, tenure, simpletenure,
+                        hh_income_before_hcosts,
+                        hh_income_after_hcosts
+                        )
   return(out)
 }
 
 all_hhlds <- ldply(all_hhlds_ss, fn) %>% tbl_df
 
+
+
+# Data - urban/rural indicator household link -------------------------------------------------------
+
+
+dta_path <- "E:/data/bhps/urban_rural/UKDA-6032-tab/tab/"
+dta_files <- list.files(path = dta_path, pattern = "[a-z]{1}ur01ind_protect\\.tab")
+
+all_urbrur <- llply(
+  paste0(dta_path, dta_files), 
+  read_delim,
+  delim = "\t"
+)
+
+fn <- function(x){
+  nms <- names(x)
+  
+  selection <- str_detect(
+    nms , 
+    pattern = "^[a-z]{1}hid"
+  ) | str_detect(
+    nms , 
+    "^[a-z]{1}ur01ind$"
+  ) 
+  out <- x[,selection]
+  tmp <- names(out)
+  wave <- tmp[str_detect(tmp, pattern = "^[a-z]{1}hid")]  %>% str_replace(., "hid", "")
+  wave <- which(letters %in% wave)
+  names(out) <- names(out) %>% str_replace_all("^[a-z]{1}", "")
+  out <- data.frame(wave, out)
+  return(out)
+}
+
+all_urbrur <- ldply(
+  all_urbrur,
+  fn
+)
+
+
+# join urbrur to all_hhlds 
+
+all_hhlds <- all_hhlds %>% left_join(all_urbrur)
+
+
+# recode to three states 
+
+fn <- function(x){
+  out <- x
+  out$ur_group <- NA
+  
+  ur_scot <- recode(
+    x$ur01ind,
+    "
+    c(1, 2) = 'urban';
+    c(3, 4, 6, 7) = 'suburban';
+    c(5, 8) = 'rural';
+    else = NA
+    "
+  )
+  
+  ur_enw <- recode(
+    x$ur01ind,
+    "
+    c(1, 5) = 'urban';
+    c(2, 6, 7, 8) = 'suburban';
+    c(3, 4) = 'rural';
+    else = NA
+    "
+  )
+    
+  is_scot <- which(out$region == "scotland")
+  is_engwales <- which(out$region != "scotland"  & !is.na(out$region))
+  out$ur_group[is_scot] <- ur_scot[is_scot]
+  out$ur_group[is_engwales] <- ur_enw[is_engwales]
+  
+  out$ur01ind <- NULL
+  
+  return(out)
+}
+
+
+all_hhlds <- fn(all_hhlds)
 all_inds_drvs <- all_inds_drvs %>% join(all_hhlds) %>% tbl_df
-
-
 
 # Graphs - individual level -----------------------------------------------
 
@@ -381,20 +474,30 @@ ggsave("figures/prop_who_like_neighbourhood.png", dpi = 300, height = 15, width 
 # Males aged 26-35 who do not drive, particularly in wave 8 (H)
 
 
+
 all_inds_drvs %>% mutate(
   age_grp = ntile(age, 10)
   ) %>% 
-  filter(!is.na(sex)) %>% 
+  filter(!is.na(sex) & !is.na(age_grp)) %>% 
   group_by(sex, age_grp, drives) %>% 
-  summarise(mn_ghq = mean(ghq, na.rm=T)) %>% 
-  ggplot(.) + 
-  geom_bar(
-    aes(x = age_grp, y = mn_ghq, group = sex, colour = sex, fill = sex), 
-    position = "dodge", stat= "identity"
-    ) + facet_wrap(~ drives)
+  summarise(mn_ghq = mean(ghq, na.rm=T)) %>%
+  filter(!is.na(drives)) %>% 
+  ggplot(data = ., 
+         mapping =     
+           aes(
+             x = factor(age_grp), y = mn_ghq, 
+             group = sex, colour = sex, fill = sex
+             )
+    ) + 
+  geom_line() + geom_point() + 
+  facet_wrap(~ drives) + 
+  labs(
+    x = "Age group decile", y = "Mean GHQ Score (lower is better)",
+    title = "Mean GHQ score by decile of age, sex, and whether has driving licence"
+  )
 
 
-# Proportion who drive by age, all years (so double counting etx)
+# Proportion who drive by age, all years (so double counting etc)
 all_inds_drvs %>%   
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
@@ -578,6 +681,7 @@ all_inds_drvs %>%
   ) %>% 
   filter(age < 80 & age > 17) %>% 
   ggplot(.) +
+  theme_minimal() + 
   geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
   facet_wrap(~ sex) + 
   scale_fill_gradientn(colours = rainbow(7)) + 
@@ -588,7 +692,7 @@ all_inds_drvs %>%
   )
 ggsave("figures/levelplot_propdrive_sex.png", height = 25, width = 25, dpi = 300, units = "cm")
 
-# Cohort effects much stronger when looing age genders separately
+# Cohort effects much stronger when looking at genders separately
 # Suggestion that female cohorts learned to drive less from an 
 # earlier birth cohort, perhaps from around 1978-9.
 # For males, it may have been since around 1980-1982
@@ -620,9 +724,9 @@ all_inds_drvs %>%
 # and sex*gender interaction. Possibly a recent cohoort effect 
 ggsave("figures/levelplot_propdrive_sex_qual.png", height = 30, width = 30, dpi = 300, units = "cm")
 
+
+
 # Something similar, but with GHQ score?
-
-
 all_inds_drvs %>% 
   mutate(
     year = wave + 1990
@@ -788,3 +892,258 @@ all_inds_drvs %>%
   )
 
 ggsave("figures/socialrent_bysex_highqual.png", height = 30, width = 30, units = "cm", dpi = 300)
+
+
+#  Lexis surface of urban rural classification by sex
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives) & !is.na(ur_group)) %>% 
+  select(ur_group, sex, age, year, drives) %>% 
+  group_by(ur_group, sex, age, year, drives) %>% 
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = "Proportions holding licence by age and year, tiled by sex \nand urban rural classification",
+    x = "Year",
+    y = "Age in years"
+  )
+
+ggsave("figures/drivelicence_bysex_ur_group.png", height = 30, width = 30, units = "cm", dpi = 300)
+# Rural seems too sparse to be worth including
+# Gender differences, especially for urban, seem even stronger in this case
+
+# As before, but excluding rural category
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives) & !is.na(ur_group)) %>%
+  filter(ur_group != "rural") %>% 
+  select(ur_group, sex, age, year, drives) %>% 
+  group_by(ur_group, sex, age, year, drives) %>% 
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = "Proportions holding licence by age and year, tiled by sex \nand urban rural classification",
+    x = "Year",
+    y = "Age in years"
+  )
+
+ggsave("figures/drivelicence_bysex_urban_suburban_group.png", height = 30, width = 30, units = "cm", dpi = 300)
+
+
+# urban/suburban by educational qualification, males only 
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
+           !is.na(drives) & !is.na(highqual) & !is.na(ur_group)
+         ) %>%
+  filter(ur_group != "rural" & sex == "male") %>% 
+  select(ur_group, highqual, age, year, drives) %>% 
+  group_by(ur_group, highqual, age, year, drives) %>% 
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = "Proportions of males holding licence by age and year, 
+    tiled by highest qualification \nand urban rural classification",
+    x = "Year",
+    y = "Age in years"
+  )
+
+ggsave("figures/drivelicence_males_urgroup_by_highqual.png", height = 30, width = 30, units = "cm", dpi = 300)
+
+# urban/suburban by educational qualification, females only 
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
+           !is.na(drives) & !is.na(highqual) & !is.na(ur_group)
+  ) %>%
+  filter(ur_group != "rural" & sex == "female") %>% 
+  select(ur_group, highqual, age, year, drives) %>% 
+  group_by(ur_group, highqual, age, year, drives) %>% 
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+"Proportions of females holding licence by age and year, tiled by 
+highest qualification and urban rural classification",
+    x = "Year",
+    y = "Age in years"
+  )
+
+ggsave("figures/drivelicence_females_urgroup_by_highqual.png", height = 30, width = 30, units = "cm", dpi = 300)
+
+
+
+# driving by tertile of household income before housings costs 
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
+           !is.na(drives) & !is.na(hh_income_before_hcosts)
+  ) %>%
+  rename(hhincome = hh_income_before_hcosts) %>% 
+  select(hhincome, highqual, sex, age, year, drives) %>%
+  mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
+  group_by(hhincome_tertile, sex, age, year, drives) %>%
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(hhincome_tertile ~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "Driving licence holders by household income tertile and sex",
+    x = "Year",
+    y = "Age in years"
+  )
+
+# tertile of household income after housing costs 
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
+           !is.na(drives) & !is.na(hh_income_after_hcosts)
+  ) %>%
+  rename(hhincome = hh_income_after_hcosts) %>% 
+  select(hhincome, highqual, sex, age, year, drives) %>%
+  mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
+  group_by(hhincome_tertile, sex, age, year, drives) %>%
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(hhincome_tertile ~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "Driving licence holders by household income tertile and sex",
+    x = "Year",
+    y = "Age in years"
+  )
+# Income after housing costs seems less reliable/fewer observations
+# Better to use before housing costs, but substantively there is little difference
+
+
+# males only, tertile of household income by highest educational qualification
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
+           !is.na(drives) & !is.na(hh_income_before_hcosts) & 
+           !is.na(highqual)
+  ) %>%
+  filter(sex =="male") %>% 
+  rename(hhincome = hh_income_after_hcosts) %>% 
+  select(hhincome, highqual, age, year, drives) %>%
+  mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
+  group_by(hhincome_tertile, highqual, age, year, drives) %>%
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(hhincome_tertile ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "male: driving licence holders by household income tertile and highest qualification",
+    x = "Year",
+    y = "Age in years"
+  )
+
+# females only, tertile of household income by highest educational qualification
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
+           !is.na(drives) & !is.na(hh_income_before_hcosts) & 
+           !is.na(highqual)
+  ) %>%
+  filter(sex =="female") %>% 
+  rename(hhincome = hh_income_after_hcosts) %>% 
+  select(hhincome, highqual, age, year, drives) %>%
+  mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
+  group_by(hhincome_tertile, highqual, age, year, drives) %>%
+  tally %>% 
+  spread(drives, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(hhincome_tertile ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "female: driving licence holders by household income tertile and highest qualification",
+    x = "Year",
+    y = "Age in years"
+  )
