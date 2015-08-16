@@ -188,6 +188,87 @@ fn <- function(x){
 all_inds_drvs <- ldply(all_inds_ss, fn) %>% tbl_df
 
 
+# Data - egoalt files -----------------------------------------------------
+
+
+dta_path <- "E:/data/bhps/unzipped/ukda-5151-tab/tab/"
+dta_files <- list.files(path = dta_path, pattern = "egoalt\\.tab")
+
+
+rel_lookup <- read_csv("label_lookups/egoalt_rel.csv")
+rel_lookup$label <- str_trim(rel_lookup$label)
+rel_lookup2 <- rel_lookup$label
+names(rel_lookup2) <- rel_lookup$value
+simple_rel_lookup <- rel_lookup$simple_label
+names(simple_rel_lookup) <- rel_lookup$value
+
+rm(rel_lookup)
+rel_lookup <- rel_lookup2
+rm(rel_lookup2)
+
+
+
+all_egoalts <- llply(
+  paste0(dta_path, dta_files),
+  read_delim,
+  delim = "\t"
+)
+
+
+fn <- function(x){
+  nms <- names(x)
+  
+  selection <- str_detect(
+    nms , 
+    pattern = "^[A-Z]{1}HID"
+  ) | str_detect(
+    nms , 
+    "PNO$"
+  ) | str_detect(
+    nms , 
+    "REL$"
+  ) | str_detect(
+    nms , 
+    "PID$"
+  ) 
+  
+  out <- x[,selection]
+  PID <- out$PID
+  out <- out %>% select(-PID)
+  tmp <- names(out)
+  WAVE <- tmp[str_detect(tmp, pattern = "^[A-Z]{1}HID")]  %>% str_replace(., "HID", "")
+  names(out) <- names(out) %>% str_replace_all("^[A-Z]{1}", "")
+  out <- data.frame(WAVE = WAVE, PID = PID, out)
+  return(out)
+}
+
+all_egoalts_ss <- llply(
+  all_egoalts,
+  fn
+)
+
+# Variable with relationships defined
+fn <- function(x){
+  out <- x %>% select(
+    hid = HID, pno = PNO, opno = OPNO, opid = OPID
+  )
+  
+  out$rel <- rel_lookup[as.character(x$REL)]
+  
+  out$rel_simple <- simple_rel_lookup[as.character(x$REL)]  
+  
+  
+  out$wave <- which(LETTERS %in% x$WAVE)
+  out <- out %>% select(hid, wave, pno, opno, opid,
+                        relation = rel,
+                        simple_relation = rel_simple
+                        )
+  return(out)
+}
+
+all_egoalts <- ldply(all_egoalts_ss, fn) %>% tbl_df
+
+rm(all_egoalts_ss, rel_lookup, simple_rel_lookup)
 
 # Data - households -------------------------------------------------------
 
