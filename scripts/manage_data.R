@@ -136,16 +136,31 @@ fn <- function(x){
     "
   )
   
-  out$drives <- NA
+  # dlo: driving licence ownership
+  # co: car ownership
+  
+  
+  out$dlo <- NA
   if (x$WAVE[1] %in% c("A", "B")){
-    out$drives[x$DRIVER==1] <- "yes"
-    out$drives[x$DRIVER==2] <- "no"
+    out$dlo[x$DRIVER==1] <- "yes"
+    out$dlo[x$DRIVER==2] <- "no"
   } else {
-    out$drives[x$CARUSE==3] <- "no"
-    out$drives[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
+    out$dlo[x$CARUSE==3] <- "no"
+    out$dlo[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
   }
+  
+  out$cu <- NA  # car use
+  if (x$WAVE[1] %in% c("A", "B")){
+    out$cu[x$CARUSE==1] <- "yes"
+    out$cu[x$CARUSE==3] <- "no"
+  } else {
+    out$cu[x$CARUSE==1] <- "yes"
+    out$cu[x$CARUSE==2] <- "no"
+    
+  }
+  
   out$wave <- which(LETTERS %in% x$WAVE)
-  out <- out %>% select_(~pid, ~hid, ~wave, ~sex, ~age, ~drives, ~ghq, ~neigh, ~isced, ~highqual)
+  out <- out %>% select_(~pid, ~hid, ~wave, ~sex, ~age, ~dlo, ~cu, ~ghq, ~neigh, ~isced, ~highqual)
   return(out)
   }
 
@@ -233,6 +248,21 @@ fn <- function(x){
 all_egoalts <- ldply(all_egoalts_ss, fn) %>% tbl_df
 
 rm(all_egoalts_ss, rel_lookup, simple_rel_lookup)
+
+
+
+# Household composition ---------------------------------------------------
+
+
+hh_composition <- all_egoalts %>% 
+  group_by(hid, wave) %>% 
+  summarise(
+    num_hh_members = length(unique(pid)), 
+    num_children = length(unique(pid[simple_relation == "child"]))
+  ) %>% 
+  mutate(num_adults = num_hh_members - num_children)
+
+
 
 
 
@@ -429,7 +459,8 @@ dta_files <- list.files(path = dta_path, pattern = "[a-z]{1}ur01ind_protect\\.ta
 all_urbrur <- llply(
   paste0(dta_path, dta_files), 
   read_delim,
-  delim = "\t"
+  delim = "\t",
+  col_types = "ic"
 )
 
 fn <- function(x){
@@ -482,8 +513,8 @@ fn <- function(x){
     x$ur01ind,
     "
     c(1, 5) = 'urban';
-    c(2, 6, 7, 8) = 'suburban';
-    c(3, 4) = 'rural';
+    c(6, 7, 8) = 'suburban';
+    c(2, 3, 4) = 'rural';
     else = NA
     "
   )
@@ -501,3 +532,4 @@ fn <- function(x){
 
 all_hhlds <- fn(all_hhlds)
 all_inds_drvs <- all_inds_drvs %>% join(all_hhlds) %>% tbl_df
+

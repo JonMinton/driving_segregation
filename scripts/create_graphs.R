@@ -2,18 +2,18 @@
 
 # prop who like neighbourhood by wave, sex and driver status
 all_inds_drvs %>% 
-  filter(!is.na(neigh) & !is.na(drives)) %>% 
-  group_by(sex, wave, drives, neigh) %>% 
+  filter(!is.na(neigh) & !is.na(dlo)) %>% 
+  group_by(sex, wave, dlo, neigh) %>% 
   tally %>% 
   spread(neigh, n) %>% 
   mutate(like_prop = yes/ (mixed + no + yes)) %>% 
-  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = drives, group = drives)) +
+  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = dlo, group = dlo)) +
   geom_line() + geom_point() + 
   facet_wrap(~sex)
 
 #prop who like neighbourhood by wave, age group, sex and driver status
 all_inds_drvs %>% 
-  filter(!is.na(neigh) & !is.na(drives)) %>% 
+  filter(!is.na(neigh) & !is.na(dlo)) %>% 
   mutate(age_grp = 
            cut(age, 
                breaks = c(17, 21, 26, 35, 50, 65, 80), 
@@ -22,11 +22,11 @@ all_inds_drvs %>%
            )
   ) %>% 
   filter(!is.na(age_grp)) %>% 
-  group_by(age_grp, sex, wave, drives, neigh) %>% 
+  group_by(age_grp, sex, wave, dlo, neigh) %>% 
   tally %>% 
   spread(neigh, n) %>% 
   mutate(like_prop = yes/ (mixed + no + yes)) %>% 
-  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = drives, group = drives)) +
+  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = dlo, group = dlo)) +
   geom_line() + geom_point() + 
   facet_grid(sex ~age_grp) + 
   labs(x = "BPHS Wave", y = "proportion of respondents who like their neighbourhood")
@@ -41,9 +41,9 @@ all_inds_drvs %>% mutate(
   age_grp = ntile(age, 10)
 ) %>% 
   filter(!is.na(sex) & !is.na(age_grp)) %>% 
-  group_by(sex, age_grp, drives) %>% 
+  group_by(sex, age_grp, dlo) %>% 
   summarise(mn_ghq = mean(ghq, na.rm=T)) %>%
-  filter(!is.na(drives)) %>% 
+  filter(!is.na(dlo)) %>% 
   ggplot(data = ., 
          mapping =     
            aes(
@@ -52,7 +52,7 @@ all_inds_drvs %>% mutate(
            )
   ) + 
   geom_line() + geom_point() + 
-  facet_wrap(~ drives) + 
+  facet_wrap(~ dlo) + 
   labs(
     x = "Age group decile", y = "Mean GHQ Score (lower is better)",
     title = "Mean GHQ score by decile of age, sex, and whether has driving licence"
@@ -64,7 +64,7 @@ all_inds_drvs %>%
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
   group_by(sex, age) %>% 
-  mutate(does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
   geom_line(aes(x = age, y = driv_prop, colour = sex, group = sex))
@@ -77,7 +77,7 @@ all_inds_drvs %>%
   group_by(wave_year, sex, age) %>%
   filter(age <= 80) %>% 
   mutate(
-    does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")
+    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
   ) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
@@ -97,7 +97,7 @@ all_inds_drvs %>%
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
   group_by(wave, sex, age) %>% 
-  mutate(does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
   geom_line(aes(x = age, y = driv_prop)) + 
@@ -107,7 +107,7 @@ all_inds_drvs %>%
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
   group_by(wave, sex, age) %>% 
-  mutate(does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
   geom_line(
@@ -134,7 +134,7 @@ all_inds_drvs %>%
   filter(age <= 80) %>% 
   arrange(wave_grp, sex, age) %>% 
   group_by(wave_grp, sex, age) %>% 
-  mutate(does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
   geom_line(
@@ -169,7 +169,7 @@ all_inds_drvs %>%
   filter(!is.na(brth_chrt_grp) & !is.na(sex)) %>% 
   arrange(brth_chrt_grp, sex, age) %>% 
   group_by(brth_chrt_grp, sex, age) %>% 
-  mutate(does_drive = recode(drives, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
   ggplot(. ) +
   geom_line(
@@ -195,11 +195,11 @@ all_inds_drvs %>%
   mutate(
     year = wave + 1990
   ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives)) %>% 
-  select(sex, age, year, drives) %>% 
-  group_by(sex, age, year, drives) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)) %>% 
+  select(sex, age, year, dlo) %>% 
+  group_by(sex, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -232,11 +232,11 @@ all_inds_drvs %>%
   mutate(
     year = wave + 1990
   ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives)) %>% 
-  select(sex, age, year, drives) %>% 
-  group_by(sex, age, year, drives) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)) %>% 
+  select(sex, age, year, dlo) %>% 
+  group_by(sex, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -263,11 +263,11 @@ all_inds_drvs %>%
   mutate(
     year = wave + 1990
   ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives) & !is.na(highqual)) %>% 
-  select(highqual, sex, age, year, drives) %>% 
-  group_by(highqual, sex, age, year, drives) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual)) %>% 
+  select(highqual, sex, age, year, dlo) %>% 
+  group_by(highqual, sex, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -458,15 +458,16 @@ ggsave("figures/socialrent_bysex_highqual.png", height = 30, width = 30, units =
 
 #  Lexis surface of urban rural classification by sex
 
-all_inds_drvs %>% 
+all_inds_drvs %>%
+  filter(region !="wales" & region != "scotland") %>% 
   mutate(
     year = wave + 1990
   ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives) & !is.na(ur_group)) %>% 
-  select(ur_group, sex, age, year, drives) %>% 
-  group_by(ur_group, sex, age, year, drives) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  select(ur_group, sex, age, year, dlo) %>% 
+  group_by(ur_group, sex, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -491,12 +492,12 @@ all_inds_drvs %>%
   mutate(
     year = wave + 1990
   ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(drives) & !is.na(ur_group)) %>%
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>%
   filter(ur_group != "rural") %>% 
-  select(ur_group, sex, age, year, drives) %>% 
-  group_by(ur_group, sex, age, year, drives) %>% 
+  select(ur_group, sex, age, year, dlo) %>% 
+  group_by(ur_group, sex, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -522,13 +523,13 @@ all_inds_drvs %>%
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
-           !is.na(drives) & !is.na(highqual) & !is.na(ur_group)
+           !is.na(dlo) & !is.na(highqual) & !is.na(ur_group)
   ) %>%
   filter(ur_group != "rural" & sex == "male") %>% 
-  select(ur_group, highqual, age, year, drives) %>% 
-  group_by(ur_group, highqual, age, year, drives) %>% 
+  select(ur_group, highqual, age, year, dlo) %>% 
+  group_by(ur_group, highqual, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -554,13 +555,13 @@ all_inds_drvs %>%
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
-           !is.na(drives) & !is.na(highqual) & !is.na(ur_group)
+           !is.na(dlo) & !is.na(highqual) & !is.na(ur_group)
   ) %>%
   filter(ur_group != "rural" & sex == "female") %>% 
-  select(ur_group, highqual, age, year, drives) %>% 
-  group_by(ur_group, highqual, age, year, drives) %>% 
+  select(ur_group, highqual, age, year, dlo) %>% 
+  group_by(ur_group, highqual, age, year, dlo) %>% 
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -589,14 +590,14 @@ all_inds_drvs %>%
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
-           !is.na(drives) & !is.na(hh_income_before_hcosts)
+           !is.na(dlo) & !is.na(hh_income_before_hcosts)
   ) %>%
   rename(hhincome = hh_income_before_hcosts) %>% 
-  select(hhincome, highqual, sex, age, year, drives) %>%
+  select(hhincome, highqual, sex, age, year, dlo) %>%
   mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
-  group_by(hhincome_tertile, sex, age, year, drives) %>%
+  group_by(hhincome_tertile, sex, age, year, dlo) %>%
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -619,14 +620,14 @@ all_inds_drvs %>%
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
-           !is.na(drives) & !is.na(hh_income_after_hcosts)
+           !is.na(dlo) & !is.na(hh_income_after_hcosts)
   ) %>%
   rename(hhincome = hh_income_after_hcosts) %>% 
-  select(hhincome, highqual, sex, age, year, drives) %>%
+  select(hhincome, highqual, sex, age, year, dlo) %>%
   mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
-  group_by(hhincome_tertile, sex, age, year, drives) %>%
+  group_by(hhincome_tertile, sex, age, year, dlo) %>%
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -652,16 +653,16 @@ all_inds_drvs %>%
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
-           !is.na(drives) & !is.na(hh_income_before_hcosts) & 
+           !is.na(dlo) & !is.na(hh_income_before_hcosts) & 
            !is.na(highqual)
   ) %>%
   filter(sex =="male") %>% 
   rename(hhincome = hh_income_after_hcosts) %>% 
-  select(hhincome, highqual, age, year, drives) %>%
+  select(hhincome, highqual, age, year, dlo) %>%
   mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
-  group_by(hhincome_tertile, highqual, age, year, drives) %>%
+  group_by(hhincome_tertile, highqual, age, year, dlo) %>%
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
@@ -684,16 +685,16 @@ all_inds_drvs %>%
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & 
-           !is.na(drives) & !is.na(hh_income_before_hcosts) & 
+           !is.na(dlo) & !is.na(hh_income_before_hcosts) & 
            !is.na(highqual)
   ) %>%
   filter(sex =="female") %>% 
   rename(hhincome = hh_income_after_hcosts) %>% 
-  select(hhincome, highqual, age, year, drives) %>%
+  select(hhincome, highqual, age, year, dlo) %>%
   mutate(hhincome_tertile = ntile(hhincome, 3)) %>% 
-  group_by(hhincome_tertile, highqual, age, year, drives) %>%
+  group_by(hhincome_tertile, highqual, age, year, dlo) %>%
   tally %>% 
-  spread(drives, n) %>% 
+  spread(dlo, n) %>% 
   mutate(no = ifelse(is.na(no), 0, no),
          yes = ifelse(is.na(yes), 0, yes),
          prop_driving = yes / (yes + no)
