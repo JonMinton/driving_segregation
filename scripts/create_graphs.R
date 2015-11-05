@@ -885,3 +885,116 @@ all_inds_drvs %>%
     y = "Age in years"
   )
 
+
+
+
+# Lexis plot of mean number of children in household by age, year  --------
+
+all_inds_drvs %>% 
+  filter(!is.na(num_children)) %>% 
+  mutate(year = wave + 1991) %>% 
+  select(year, age, num_children) %>% 
+  group_by(year, age) %>% 
+  summarise(mean_num_children = mean(num_children)) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = mean_num_children)) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "mean number of children in household by age and year",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
+# Proportion of households with no children
+all_inds_drvs %>% 
+  filter(!is.na(num_children)) %>% 
+  mutate(year = wave + 1990) %>% 
+  select(year, age, num_children) %>%
+  mutate(has_child = ifelse(num_children > 0, 1, 0)) %>% 
+  select(year, age, has_child) %>% 
+  group_by(year, age, has_child) %>% 
+  tally %>% 
+  spread(has_child, n, fill = 0) %>% 
+  
+  mutate(prop_with_child = `1` / (`1` + `0`)) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_with_child)) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "proportion of households with children",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
+# driving licence ownership by whether household contains a child
+tmp1 <- all_inds_drvs %>% 
+  filter(!is.na(num_children)) %>% 
+  mutate(year = wave + 1990) %>% 
+  select(year, age, dlo, num_children) %>%
+  mutate(has_child = ifelse(num_children > 0, "yes", "no")) %>% 
+  select(year, age, dlo, has_child) %>% 
+  group_by(age, year, has_child) %>% 
+  tally %>% 
+  spread(has_child, n, fill = 0) %>%
+  mutate(prop_with_child = yes / (yes + no)) %>% 
+  select(age, year, prop_with_child)
+
+
+tmp2 <- all_inds_drvs %>% 
+  filter(!is.na(dlo)) %>% 
+  mutate(year = wave + 1990) %>% 
+  select(year, age, dlo) %>% 
+  group_by(year, age, dlo) %>% 
+  tally %>% 
+  spread(dlo, n, fill = 0) %>% 
+  mutate(prop_with_dl = yes / (yes + no)) %>% 
+  select(year, age, prop_with_dl)
+
+
+tmp3 <- tmp1 %>% inner_join(tmp2)
+  
+tmp3 %>%  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = dlo)) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  facet_wrap( ~ has_child) +
+  labs(
+    title = 
+      "dlos by whether household includes a child",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
+
+tmp1 <-   group_by(highqual, age, year, dlo) %>%
+  tally %>% 
+  spread(dlo, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+
+
+  
+
+
+  group_by(year, age) %>% 
+  
+  summarise(mean_num_children = mean(num_children)) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = mean_num_children)) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = 
+      "mean number of children in household by age and year",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
