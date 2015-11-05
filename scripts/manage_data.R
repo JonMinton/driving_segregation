@@ -503,8 +503,7 @@ fn <- function(x){
     x$ur01ind,
     "
     c(1, 2) = 'urban';
-    c(3, 4, 6, 7) = 'suburban';
-    c(5, 8) = 'rural';
+    c(3, 4, 5, 6, 7, 8) = 'nonurban';
     else = NA
     "
   )
@@ -512,9 +511,8 @@ fn <- function(x){
   ur_enw <- recode(
     x$ur01ind,
     "
-    c(1, 5) = 'urban';
-    c(6, 7, 8) = 'suburban';
-    c(2, 3, 4) = 'rural';
+    5 = 'urban';
+    c(1, 2, 3, 4, 6, 7, 8) = 'nonurban';
     else = NA
     "
   )
@@ -533,3 +531,4 @@ fn <- function(x){
 all_hhlds <- fn(all_hhlds)
 all_inds_drvs <- all_inds_drvs %>% join(all_hhlds) %>% tbl_df
 
+all_inds_drvs <- all_inds_drvs %>% left_join(hh_composition)

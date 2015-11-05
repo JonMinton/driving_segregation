@@ -121,7 +121,99 @@ all_inds_drvs %>%
 
 
 
-# proportion who drive by groups of wave
+# Proportion of driving license owners (DLOs) who do not drive ------------
+
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(age, year,  cu) %>% 
+  group_by(age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = drivers_driving)) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  theme_minimal() + 
+  labs(
+    title = "Level plot of proportions of licence holders driving by age and year",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
+# by sex
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(sex, age, year,  cu) %>% 
+  group_by(sex, age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = drivers_driving)) +
+  facet_wrap(~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  theme_minimal() + 
+  labs(
+    title = "Level plot of proportions of licence holders driving by age and year",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
+
+# by sex and qualification
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu) & !is.na(highqual)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(highqual, sex, age, year,  cu) %>% 
+  group_by(highqual, sex, age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = drivers_driving)) +
+  facet_grid(highqual~ sex) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  theme_minimal() + 
+  labs(
+    title = "Level plot of proportions of licence holders driving by age and year",
+    x = "Year",
+    y = "Age in years"
+  )
+
+
+
+
+
+# proportion who have driving licences by groups of wave
 all_inds_drvs %>%   
   filter(!is.na(sex)) %>% 
   mutate(wave_grp = 
@@ -484,7 +576,89 @@ all_inds_drvs %>%
   )
 
 ggsave("figures/drivelicence_bysex_ur_group.png", height = 30, width = 30, units = "cm", dpi = 300)
-# Rural seems too sparse to be worth including
+
+
+# Urban/nonurban differences by qualification
+
+all_inds_drvs %>%
+  filter(region !="wales" & region != "scotland") %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(age) & !is.na(highqual) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  select(highqual, ur_group, age, year, dlo) %>% 
+  group_by(highqual, ur_group, age, year, dlo) %>% 
+  tally %>% 
+  spread(dlo, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = "Proportions holding licence by age and year, tiled by highest qual \nand urban rural classification",
+    x = "Year",
+    y = "Age in years"
+  )
+
+# males only 
+all_inds_drvs %>%
+  filter(region !="wales" & region != "scotland") %>%
+  filter(sex == "male") %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(age) & !is.na(highqual) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  select(highqual, ur_group, age, year, dlo) %>% 
+  group_by(highqual, ur_group, age, year, dlo) %>% 
+  tally %>% 
+  spread(dlo, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = "Proportions holding licence by age and year, tiled by highest qual \nand urban rural classification, males only",
+    x = "Year",
+    y = "Age in years"
+  )
+
+# females only 
+all_inds_drvs %>%
+  filter(region !="wales" & region != "scotland") %>%
+  filter(sex == "female") %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(age) & !is.na(highqual) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  select(highqual, ur_group, age, year, dlo) %>% 
+  group_by(highqual, ur_group, age, year, dlo) %>% 
+  tally %>% 
+  spread(dlo, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  ggplot(.) +
+  geom_tile(mapping=aes(x=year, y = age, fill = prop_driving)) + 
+  facet_grid(ur_group ~ highqual) + 
+  scale_fill_gradientn(colours = rainbow(7)) + 
+  labs(
+    title = "Proportions holding licence by age and year, tiled by highest qual \nand urban rural classification, females only",
+    x = "Year",
+    y = "Age in years"
+  )
+
 # Gender differences, especially for urban, seem even stronger in this case
 
 # As before, but excluding rural category
