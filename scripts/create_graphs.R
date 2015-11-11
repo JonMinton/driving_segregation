@@ -90,6 +90,30 @@ all_inds_drvs %>%
   )
 ggsave("figures/prop_drive_facet_by_waveyear.png", height = 30, width = 30, units = "cm", dpi = 300)
 
+
+all_inds_drvs %>%   
+  filter(!is.na(sex)) %>% 
+  arrange(sex, age) %>% 
+  mutate(wave_year = 1990 + wave) %>% 
+  group_by(wave_year, sex, age) %>%
+  filter(age <= 80) %>% 
+  mutate(
+    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
+  ) %>% 
+  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
+  ggplot(. , mapping = aes(x = age, y = driv_prop, colour = sex, group = sex)) +
+  geom_point() +
+  stat_smooth() + 
+  facet_wrap( ~ wave_year) + 
+  labs(
+    title = "Proportion with driving licence by BHPS wave, age and sex",
+    x = "Age (years)", 
+    y = "Proportion holding driving licence"
+  )
+
+ggsave("figures/prop_drive_facet_by_waveyear_smoothpoint.png", height = 30, width = 30, units = "cm", dpi = 300)
+
+
 # This suggests a much higher proportion of males who drive from mid 20s onwards
 
 
@@ -149,6 +173,70 @@ all_inds_drvs %>%
     x = "Year",
     y = "Age in years"
   )
+ggsave("figures/prop_dlo_driving.png", height = 15, width =15, dpi = 300, units = "cm")
+
+
+# contourplot version
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(age, year,  cu) %>% 
+  group_by(age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  contourplot(
+    drivers_driving ~ year * age , 
+    data=., 
+    region=T, 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(6, "Spectral"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.1),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
+# dev.off()
+# 
+
+
+
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(age, year,  cu) %>% 
+  group_by(age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>%
+  
+  
 
 
 # by sex
@@ -179,6 +267,91 @@ all_inds_drvs %>%
     y = "Age in years"
   )
 
+ggsave("figures/prop_dlo_driving_bysex.png", height = 15, width =30, dpi = 300, units = "cm")
+
+
+# Contourplot - by sex, unsmoothed ----------------------------------------
+
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(sex, age, year,  cu) %>% 
+  group_by(sex, age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  levelplot(
+    drivers_driving ~ year * age |sex, 
+    data=., 
+    region=T, 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(6, "Spectral"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.1),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
+
+
+
+# Contour plot, by sex, smoothed ------------------------------------------
+
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(sex, age, year,  cu) %>% 
+  group_by(sex, age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  smooth_var(., group_vars = "sex", smooth_var = "drivers_driving", smooth_par = 0.5) %>% 
+  filter(age < 80 & age > 17) %>% 
+  levelplot(
+    drivers_driving ~ year * age |sex, 
+    data=., 
+    region=T, 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(6, "Spectral"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.1),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
 
 
 # by sex and qualification
@@ -209,6 +382,41 @@ all_inds_drvs %>%
     y = "Age in years"
   )
 
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu) & !is.na(highqual)) %>% 
+  filter( year > 1992) %>% 
+  filter(dlo == "yes") %>% 
+  select(highqual, sex, age, year,  cu) %>% 
+  group_by(highqual, sex, age, year, cu) %>% 
+  tally %>% 
+  spread(cu, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age >= 20) %>% 
+  levelplot(
+    drivers_driving ~ year * age | highqual + sex, 
+    data=., 
+    region=T, 
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= colorRampPalette(brewer.pal(8, "Spectral"))(200),
+    main=NULL,
+    at = seq(0, 1, by = 0.025),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
 
 
 
@@ -309,7 +517,40 @@ all_inds_drvs %>%
 ggsave("figures/levelplot_propdrive_overall.png", height = 25, width = 25, dpi = 300, units = "cm")
 
 
-
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)) %>% 
+  select(sex, age, year, dlo) %>% 
+  group_by(sex, age, year, dlo) %>% 
+  tally %>% 
+  spread(dlo, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  
+  filter(age < 80 & age >= 20) %>% 
+  levelplot(
+    prop_driving ~ year * age | sex, 
+    data=., 
+    region=T, 
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= colorRampPalette(brewer.pal(6, "Spectral"))(200),
+    main=NULL,
+    at = seq(0, 1, by = 0.025),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
 
 # Change in how the question is asked leads to increasing proportion stating
 # they own a driving licence - once the question was asked that assumed 
@@ -375,9 +616,43 @@ all_inds_drvs %>%
     y = "Age in years"
   )
 # This seems very informative: very large qualifications effect 
-# and sex*gender interaction. Possibly a recent cohoort effect 
+# and sex*gender interaction. Possibly a recent cohort effect 
 ggsave("figures/levelplot_propdrive_sex_qual.png", height = 30, width = 30, dpi = 300, units = "cm")
 
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual)) %>% 
+  select(highqual, sex, age, year, dlo) %>% 
+  group_by(highqual, sex, age, year, dlo) %>% 
+  tally %>% 
+  spread(dlo, n) %>% 
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         prop_driving = yes / (yes + no)
+  ) %>% 
+  filter(age < 80 & age > 17) %>% 
+  levelplot(
+    prop_driving ~ year * age | sex + highqual , 
+    data=., 
+    region=T, 
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= colorRampPalette(brewer.pal(6, "Spectral"))(200),
+    main=NULL,
+    at = seq(0, 1, by = 0.025),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
 
 
 # Something similar, but with GHQ score?

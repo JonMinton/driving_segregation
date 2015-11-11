@@ -32,15 +32,24 @@ require(car)
 require(Zelig)
 
 require(ggplot2)
+
+require(RColorBrewer)
 require(lattice)
+require(latticeExtra)
+
 
 require(plyr)
 require(dplyr)
 
+require(fields) 
+require(spatstat)
 
+############################################################################################################
+############################################################################################################
+source("Scripts/smoother_function.R")
+source("Scripts/lexis_helper_functions.R")
 
 source("scripts/manage_data.R")
-
 source("scripts/create_graphs.R")
 
 
