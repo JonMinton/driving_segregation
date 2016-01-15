@@ -167,6 +167,99 @@ fn <- function(x){
 all_inds_drvs <- ldply(all_inds_ss, fn) %>% tbl_df
 
 
+# # Variation of above for looking at neighbourhood characteristics ---------
+# 
+# # variable with pid, wave, sex, car_driver (derived), age, ghq
+# 
+# fn <- function(x){
+#   out <- x %>% select_(
+#     pid = ~PID, hid = ~HID, sex = ~SEX, age = ~AGE, ghq = ~HLGHQ2
+#                        ) %>% 
+#     mutate(
+#       opngbha = NA, 
+#       opngbhb = NA,
+#       opngbhc = NA,
+#       opngbhd = NA,
+#       opngbhe = NA,
+#       opngbhf = NA,
+#       opngbhg = NA,
+#       opngbhh = NA
+#       
+#            )
+#   
+#   if ("OPNGBHA" %in% names(x)) {out$opngbha = x$OPNGBHA}
+#   if ("OPNGBHB" %in% names(x)) {out$opngbhb = x$OPNGBHB}
+#   if ("OPNGBHC" %in% names(x)) {out$opngbhc = x$OPNGBHC}
+#   if ("OPNGBHD" %in% names(x)) {out$opngbhd = x$OPNGBHD}
+#   if ("OPNGBHE" %in% names(x)) {out$opngbhe = x$OPNGBHE}
+#   if ("OPNGBHF" %in% names(x)) {out$opngbhf = x$OPNGBHF}
+#   if ("OPNGBHG" %in% names(x)) {out$opngbhg = x$OPNGBHG}
+#   if ("OPNGBHH" %in% names(x)) {out$opngbhh = x$OPNGBHH}
+#   
+# #   ~OPNGBHA, # feels belongs to neighbourhood
+# #   ~OPNGBHB, # local friends mean a lot
+# #   ~OPNGBHC, # advice obtanable locally
+# #   ~OPNGBHD, # can borrow things from neighbours
+# #   ~OPNGBHE, # willing to improve neighbourhood
+# #   ~OPNGBHF, # plan to stay in neighbourhood
+# #   ~OPNGBHG, # am similar to others in neighbourhood
+# #   ~OPNGBHH # talk regularly to neighbourhood
+#   
+#   
+#   out <- out %>% mutate(
+#     sex = recode(sex, "1 = 'male'; 2 = 'female'; else = NA"),
+#     ghq = ifelse(ghq < 0, NA, ghq),
+#     age = ifelse(age < 0, NA, age)
+#   )
+#   out$neigh <- NA
+#   if ("NEIGH" %in% names(x)){
+#     out$neigh <- recode(
+#       x$NEIGH, 
+#       "
+#       1 = 'yes';
+#       2 = 'no'; 
+#       3 = 'mixed';
+#       else = NA
+#       ")
+#   }
+#   out$isced <- recode(
+#     x$ISCED, 
+#     "
+#     0 = 'not defined';
+#     1 = 'primary'; 
+#     2 = 'low secondary';
+#     3 = 'low sec-voc';
+#     4 = 'hisec mivoc';
+#     5 = 'higher voc';
+#     6 = 'first degree';
+#     7 = 'higher degree';
+#     else = NA
+#     "
+#   )
+#   
+#   out$highqual <- recode(
+#     out$isced,
+#     "
+#     c('not defined', 'primary', 'secondary') = 'no further';
+#     c('low sec-voc', 'hisec mivoc', 'higher voc') = 'further vocational';
+#     c('first degree', 'higher degree') = 'further non-vocational';
+#     else = NA
+#     "
+#   )
+#   
+# 
+#   
+#   out$wave <- which(LETTERS %in% x$WAVE)
+#   return(out)
+#   }
+# 
+# all_inds_nhds <- ldply(all_inds_ss, fn) %>% tbl_df
+# 
+# all_inds_nhds <- all_inds_nhds %>% filter(wave %in% c(8, 13, 18))
+# 
+# 
+# write_csv(x = all_inds_nhds, path = "nhd_bhps_for_johanna.csv")
+
 # Data - egoalt files -----------------------------------------------------
 
 
