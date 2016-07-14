@@ -91,6 +91,61 @@ all_inds_drvs %>%
 ggsave("figures/prop_drive_facet_by_waveyear.png", height = 30, width = 30, units = "cm", dpi = 300)
 
 
+# As above but by birth cohort 
+
+all_inds_drvs %>%   
+  filter(!is.na(sex)) %>% 
+  arrange(sex, age) %>% 
+  mutate(wave_year = 1990 + wave) %>% 
+  filter(wave_year >= 1993) %>% 
+  mutate(birth_year = wave_year - age) %>% 
+#  filter(birth_year %in% seq(1930, 1980, by = 5)) %>%
+  filter(!is.na(highqual)) %>% 
+  mutate(bys = paste(birth_year, sex, sep = "_")) %>% 
+  group_by(bys, highqual, birth_year, sex, age) %>%
+  filter(age <= 80) %>% 
+  mutate(
+    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
+  ) %>% 
+  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
+  ggplot(., aes(x = age, y = driv_prop)) +
+  geom_point(aes(colour = birth_year, group = bys)) + 
+  facet_grid(highqual ~ sex) + stat_smooth(aes(y = driv_prop), se = F, colour = "black") +
+  labs(
+    title = "Proportion with driving licence by BHPS wave, age and sex",
+    x = "Age (years)", 
+    y = "Proportion holding driving licence"
+  ) + scale_colour_gradientn(colours = rainbow(10))
+
+ggsave("figures/proportions_driving_birthyear_quals_sex.png", height = 30, width = 20, units = "cm", dpi = 300)
+
+all_inds_drvs %>%   
+  filter(!is.na(sex)) %>% 
+  arrange(sex, age) %>% 
+  mutate(wave_year = 1990 + wave) %>% 
+  filter(wave_year >= 1993) %>% 
+  filter(!is.na(highqual)) %>% 
+  mutate(bys = paste(wave_year, sex, sep = "_")) %>% 
+  group_by(bys, highqual, wave_year, sex, age) %>%
+  filter(age <= 80) %>% 
+  mutate(
+    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
+  ) %>% 
+  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
+  ggplot(., aes(x = age, y = driv_prop)) +
+  geom_point(aes(colour = wave_year, group = bys)) + 
+  facet_grid(highqual ~ sex) + stat_smooth(aes(y = driv_prop), se = F, colour = "black") +
+  labs(
+    title = "Proportion with driving licence by BHPS wave, age and sex",
+    x = "Age (years)", 
+    y = "Proportion holding driving licence"
+  ) + scale_colour_gradientn(colours = rainbow(10))
+
+ggsave("figures/proportions_driving_year_quals_sex.png", height = 30, width = 20, units = "cm", dpi = 300)
+
+
+
+
 all_inds_drvs %>%   
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
