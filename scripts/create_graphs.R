@@ -2,18 +2,25 @@
 
 # prop who like neighbourhood by wave, sex and driver status
 all_inds_drvs %>% 
+  mutate(wave_year = 1990 + wave) %>%
   filter(!is.na(neigh) & !is.na(dlo)) %>% 
-  group_by(sex, wave, dlo, neigh) %>% 
+  group_by(sex, wave_year, dlo, neigh) %>% 
   tally %>% 
   spread(neigh, n) %>% 
-  mutate(like_prop = yes/ (mixed + no + yes)) %>% 
-  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = dlo, group = dlo)) +
-  geom_line() + geom_point() + 
-  facet_wrap(~sex)
+  mutate(total = mixed + no + yes) %>% 
+  mutate(mean_like_prop = yes / (total)) %>%
+  mutate(se_like_prop = (mean_like_prop * (1 - mean_like_prop) / total)^0.5) %>% 
+  ggplot(., mapping = aes(x = factor(wave_year), y = mean_like_prop, colour = dlo, group = dlo)) +
+  geom_line() + 
+  geom_point() + 
+  geom_linerange(aes(ymax = mean_like_prop + 2 * se_like_prop, ymin = mean_like_prop - 2 * se_like_prop)) +
+  facet_wrap(~sex) + 
+  labs(x = "Year", y = "Proportion liking neighbourhood")
 
 #prop who like neighbourhood by wave, age group, sex and driver status
 all_inds_drvs %>% 
   filter(!is.na(neigh) & !is.na(dlo)) %>% 
+  mutate(wave_year = 1990 + wave) %>%
   mutate(age_grp = 
            cut(age, 
                breaks = c(17, 21, 26, 35, 50, 65, 80), 
@@ -22,142 +29,209 @@ all_inds_drvs %>%
            )
   ) %>% 
   filter(!is.na(age_grp)) %>% 
-  group_by(age_grp, sex, wave, dlo, neigh) %>% 
+  group_by(age_grp, sex, wave_year, dlo, neigh) %>% 
   tally %>% 
-  spread(neigh, n) %>% 
-  mutate(like_prop = yes/ (mixed + no + yes)) %>% 
-  ggplot(., mapping = aes(x = factor(wave), y = like_prop, colour = dlo, group = dlo)) +
-  geom_line() + geom_point() + 
+  spread(neigh, n, fill = 0) %>% 
+  mutate(total = mixed + no + yes) %>% 
+  mutate(mean_like_prop = yes / (total)) %>%
+  mutate(se_like_prop = (mean_like_prop * (1 - mean_like_prop) / total)^0.5) %>% 
+  ggplot(., mapping = aes(x = factor(wave_year), y = mean_like_prop, colour = dlo, group = dlo)) +
+  geom_line() + 
+  geom_point() + 
+  geom_linerange(aes(ymax = mean_like_prop + 2 * se_like_prop, ymin = mean_like_prop - 2 * se_like_prop)) +
   facet_grid(sex ~age_grp) + 
-  labs(x = "BPHS Wave", y = "proportion of respondents who like their neighbourhood")
+  labs(x = "Year", y = "proportion of respondents who like their neighbourhood")
 
 ggsave("figures/prop_who_like_neighbourhood.png", dpi = 300, height = 15, width = 15, units = "cm")
 # This suggests there's a particularly high level of neighbourhood dissatisfaction amongst 
 # Males aged 26-35 who do not drive, particularly in wave 8 (H)
 
 
-
-all_inds_drvs %>% mutate(
-  age_grp = ntile(age, 10)
-) %>% 
+all_inds_drvs %>% 
+  mutate(wave_year = 1990 + wave) %>%
+  mutate(wave_year_group = cut(wave_year, c(0, 2000, Inf), labels = c("1990s", "2000s"))) %>% 
+  mutate(
+  age_grp = 
+    cut(
+      age, 
+      c(0, 20, 25, 35, 50, 60, 70, 999), 
+      labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
   filter(!is.na(sex) & !is.na(age_grp)) %>% 
-  group_by(sex, age_grp, dlo) %>% 
-  summarise(mn_ghq = mean(ghq, na.rm=T)) %>%
+  group_by(sex, age_grp, wave_year_group, dlo) %>% 
+  summarise(
+    mn_ghq = mean(ghq, na.rm=T),
+    se_ghq = sd(ghq, na.rm = T) / length(ghq[!is.na(ghq)]) ^ 0.5 
+    ) %>%
   filter(!is.na(dlo)) %>% 
   ggplot(data = ., 
          mapping =     
            aes(
              x = factor(age_grp), y = mn_ghq, 
-             group = sex, colour = sex, fill = sex
+             group = dlo, colour = dlo, fill = dlo
            )
   ) + 
-  geom_line() + geom_point() + 
-  facet_wrap(~ dlo) + 
+  geom_line() + geom_point() +
+  geom_linerange(
+    aes(
+      ymax = mn_ghq + 2 * se_ghq, 
+      ymin = mn_ghq - 2 * se_ghq
+      )
+    ) + 
+  facet_grid(wave_year_group~ sex) + 
   labs(
-    x = "Age group decile", y = "Mean GHQ Score (lower is better)",
-    title = "Mean GHQ score by decile of age, sex, and whether has driving licence"
+    x = "Age group", y = "Mean (SE) GHQ Score (lower is better)",
+    title = "Mean GHQ score by Age group, sex, and whether has driving licence"
   )
 
 
-# Proportion who drive by age, all years (so double counting etc)
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  arrange(sex, age) %>% 
-  group_by(sex, age) %>% 
-  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(. ) +
-  geom_line(aes(x = age, y = driv_prop, colour = sex, group = sex))
+# GHQ by highest qualification and age group
+
+all_inds_drvs %>% 
+  mutate(wave_year = 1990 + wave) %>%
+  mutate(wave_year_group = cut(wave_year, c(0, 2000, Inf), labels = c("1990s", "2000s"))) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age_grp) & !is.na(highqual)) %>% 
+  group_by(sex, age_grp, highqual, dlo) %>% 
+  summarise(
+    mn_ghq = mean(ghq, na.rm=T),
+    se_ghq = sd(ghq, na.rm = T) / length(ghq[!is.na(ghq)]) ^ 0.5 
+  ) %>%
+  filter(!is.na(dlo)) %>% 
+  ggplot(data = ., 
+         mapping =     
+           aes(
+             x = factor(age_grp), y = mn_ghq, 
+             group = dlo, colour = dlo, fill = dlo
+           )
+  ) + 
+  geom_line() + geom_point() +
+  geom_linerange(
+    aes(
+      ymax = mn_ghq + 2 * se_ghq, 
+      ymin = mn_ghq - 2 * se_ghq
+    )
+  ) + 
+  facet_grid(highqual ~ sex) + 
+  labs(
+    x = "Age group", y = "Mean (SE) GHQ Score (lower is better)",
+    title = "Mean GHQ score by Age group, sex, and whether has driving licence"
+  ) + 
+  coord_cartesian(ylim = c(0, 4))
+
+# Proportion with high GHQ (GHQ > 2) , by sex
+all_inds_drvs %>% 
+  mutate(wave_year = 1990 + wave) %>%
+  mutate(wave_year_group = cut(wave_year, c(0, 2000, Inf), labels = c("1990s", "2000s"))) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age_grp) & !is.na(ghq) & !is.na(dlo)) %>%
+  select(sex, age_grp, dlo, ghq) %>% 
+  mutate(highghq = cut(ghq, c(-1, 2, 999), labels = c("no", "yes"))) %>%
+  group_by(sex, age_grp, dlo, highghq) %>%
+  select(-ghq) %>% 
+  tally() %>%
+  spread(highghq, n) %>% 
+  mutate(
+    prop_distress = yes / (yes + no),
+    se_p = ((prop_distress * ( 1 - prop_distress) ) / (yes + no)) ^ 0.5
+  ) %>% 
+  ggplot(data = ., 
+         mapping =     
+           aes(
+             x = factor(age_grp), y = prop_distress, 
+             group = dlo, colour = dlo, fill = dlo
+           )
+  ) + 
+  geom_line() + geom_point() +
+  geom_linerange(
+    aes(
+      ymax = prop_distress + 2 * se_p, 
+      ymin = prop_distress - 2 * se_p
+    )
+  ) + 
+  facet_wrap( ~ sex) + 
+  labs(
+    x = "Age group", y = "Proportion with GHQ > 2",
+    title = "High GHQ prop by Age group, sex, and whether has driving licence"
+  ) + 
+  coord_cartesian(ylim = c(0, 0.75))
+
+
+# Proportion with high GHQ (3 or more) - by sex and qual
+
+all_inds_drvs %>% 
+  mutate(wave_year = 1990 + wave) %>%
+  mutate(wave_year_group = cut(wave_year, c(0, 2000, Inf), labels = c("1990s", "2000s"))) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age_grp) & !is.na(highqual) & !is.na(ghq) & !is.na(dlo)) %>%
+  select(sex, age_grp, highqual, dlo, ghq) %>% 
+  mutate(highghq = cut(ghq, c(-1, 2, 999), labels = c("no", "yes"))) %>%
+  group_by(sex, age_grp, highqual, dlo, highghq) %>%
+  select(-ghq) %>% 
+  tally() %>%
+  spread(highghq, n) %>% 
+  mutate(
+    prop_distress = yes / (yes + no),
+    se_p = ((prop_distress * ( 1 - prop_distress) ) / (yes + no)) ^ 0.5
+  ) %>% 
+  ggplot(data = ., 
+         mapping =     
+           aes(
+             x = factor(age_grp), y = prop_distress, 
+             group = dlo, colour = dlo, fill = dlo
+           )
+  ) + 
+  geom_line() + geom_point() +
+  geom_linerange(
+    aes(
+      ymax = prop_distress + 2 * se_p, 
+      ymin = prop_distress - 2 * se_p
+    )
+  ) + 
+  facet_grid(highqual ~ sex) + 
+  labs(
+    x = "Age group", y = "Proportion with GHQ > 2",
+    title = "High GHQ prop by Age group, sex, and whether has driving licence"
+  ) + 
+  coord_cartesian(ylim = c(0, 0.75))
+
 
 # Proportion who drive by age, faceted by wave 
 all_inds_drvs %>%   
   filter(!is.na(sex)) %>% 
   arrange(sex, age) %>% 
-  mutate(wave_year = 1990 + wave) %>% 
+  mutate(wave_year = 1990 + wave) %>%
+  filter(wave_year %in% c(1991, 1995, 2000, 2005)) %>% 
   group_by(wave_year, sex, age) %>%
   filter(age <= 80) %>% 
   mutate(
     does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
   ) %>% 
   summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(. ) +
-  geom_line(aes(x = age, y = driv_prop, colour = sex, group = sex)) + 
-  facet_wrap( ~ wave_year) + 
-  labs(
-    title = "Proportion with driving licence by BHPS wave, age and sex",
-    x = "Age (years)", 
-    y = "Proportion holding driving licence"
-  )
-ggsave("figures/prop_drive_facet_by_waveyear.png", height = 30, width = 30, units = "cm", dpi = 300)
-
-
-# As above but by birth cohort 
-
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  arrange(sex, age) %>% 
-  mutate(wave_year = 1990 + wave) %>% 
-  filter(wave_year >= 1993) %>% 
-  mutate(birth_year = wave_year - age) %>% 
-#  filter(birth_year %in% seq(1930, 1980, by = 5)) %>%
-  filter(!is.na(highqual)) %>% 
-  mutate(bys = paste(birth_year, sex, sep = "_")) %>% 
-  group_by(bys, highqual, birth_year, sex, age) %>%
-  filter(age <= 80) %>% 
-  mutate(
-    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
-  ) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(., aes(x = age, y = driv_prop)) +
-  geom_point(aes(colour = birth_year, group = bys)) + 
-  facet_grid(highqual ~ sex) + stat_smooth(aes(y = driv_prop), se = F, colour = "black") +
-  labs(
-    title = "Proportion with driving licence by BHPS wave, age and sex",
-    x = "Age (years)", 
-    y = "Proportion holding driving licence"
-  ) + scale_colour_gradientn(colours = rainbow(10))
-
-ggsave("figures/proportions_driving_birthyear_quals_sex.png", height = 30, width = 20, units = "cm", dpi = 300)
-
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  arrange(sex, age) %>% 
-  mutate(wave_year = 1990 + wave) %>% 
-  filter(wave_year >= 1993) %>% 
-  filter(!is.na(highqual)) %>% 
-  mutate(bys = paste(wave_year, sex, sep = "_")) %>% 
-  group_by(bys, highqual, wave_year, sex, age) %>%
-  filter(age <= 80) %>% 
-  mutate(
-    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
-  ) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(., aes(x = age, y = driv_prop)) +
-  geom_point(aes(colour = wave_year, group = bys)) + 
-  facet_grid(highqual ~ sex) + stat_smooth(aes(y = driv_prop), se = F, colour = "black") +
-  labs(
-    title = "Proportion with driving licence by BHPS wave, age and sex",
-    x = "Age (years)", 
-    y = "Proportion holding driving licence"
-  ) + scale_colour_gradientn(colours = rainbow(10))
-
-ggsave("figures/proportions_driving_year_quals_sex.png", height = 30, width = 20, units = "cm", dpi = 300)
-
-
-
-
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  arrange(sex, age) %>% 
-  mutate(wave_year = 1990 + wave) %>% 
-  group_by(wave_year, sex, age) %>%
-  filter(age <= 80) %>% 
-  mutate(
-    does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")
-  ) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(. , mapping = aes(x = age, y = driv_prop, colour = sex, group = sex)) +
-  geom_point() +
+  ggplot(. , aes(x = age, y = driv_prop, colour = sex, group = sex)) +
+  geom_point(alpha = 0.2) +
   stat_smooth() + 
   facet_wrap( ~ wave_year) + 
   labs(
@@ -165,42 +239,11 @@ all_inds_drvs %>%
     x = "Age (years)", 
     y = "Proportion holding driving licence"
   )
-
-ggsave("figures/prop_drive_facet_by_waveyear_smoothpoint.png", height = 30, width = 30, units = "cm", dpi = 300)
-
-
-# This suggests a much higher proportion of males who drive from mid 20s onwards
-
-
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  arrange(sex, age) %>% 
-  group_by(wave, sex, age) %>% 
-  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(. ) +
-  geom_line(aes(x = age, y = driv_prop)) + 
-  facet_grid(wave ~ sex)
-
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  arrange(sex, age) %>% 
-  group_by(wave, sex, age) %>% 
-  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(. ) +
-  geom_line(
-    aes(
-      x = age, 
-      y = driv_prop, 
-      colour = factor(wave), 
-      group = factor(wave)
-    )) + 
-  facet_wrap( ~ sex)
+#ggsave("figures/prop_drive_facet_by_waveyear.png", height = 30, width = 30, units = "cm", dpi = 300)
 
 
 
-# Proportion of driving license owners (DLOs) who do not drive ------------
+# Proportion of driving license owners (DLOs) who drive ------------
 
 
 all_inds_drvs %>% 
@@ -213,53 +256,210 @@ all_inds_drvs %>%
   select(age, year,  cu) %>% 
   group_by(age, year, cu) %>% 
   tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
+  spread(cu, n, fill = 0) %>% 
+  mutate(
          drivers_driving = yes / (yes + no)
   ) %>% 
   filter(age < 80 & age > 17) %>% 
   ggplot(.) +
-  geom_tile(mapping=aes(x=year, y = age, fill = drivers_driving)) + 
-  scale_fill_gradientn(colours = rainbow(7)) + 
+  geom_raster(mapping=aes(x=year, y = age, fill = drivers_driving)) + 
+  scale_fill_gradientn(limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), colours = rainbow(7)) + 
   theme_minimal() + 
   labs(
-    title = "Level plot of proportions of licence holders driving by age and year",
+    title = "Proportions of drivers driving",
     x = "Year",
-    y = "Age in years"
+    y = "Age in years",
+    fill = "Drivers driving"
   )
 ggsave("figures/prop_dlo_driving.png", height = 15, width =15, dpi = 300, units = "cm")
 
 
-# contourplot version
+# Show this for 1995, 2000, and 2005
+
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter(year %in% c(1995, 2000, 2005)) %>%
+  filter(dlo == "yes") %>% 
+  select(age_grp, year,  cu) %>% 
+  group_by(age_grp, year, cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no),
+    se_drdr = (drivers_driving * (1 - drivers_driving) / (yes + no)) ^ 0.5
+  ) %>% 
+  ggplot(., aes(
+    x = age_grp, 
+    y = drivers_driving, group = factor(year), colour = factor(year), shape = factor(year))) +
+  geom_line() + geom_point() + 
+  geom_linerange(
+    aes(ymax = drivers_driving + 2 * se_drdr, ymin = drivers_driving - 2 * se_drdr)
+    ) + 
+  labs(
+    x = "Age Group", 
+    y = "Proportion of drivers driving", 
+    colour = "Year", group = "Year", shape = "Year") + 
+  scale_y_continuous(limits = c(0, 1))
+
+
+# Proportion of drivers driving by sex
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
+  filter(year %in% c(1995, 2000, 2005)) %>%
+  filter(dlo == "yes") %>% 
+  select(age_grp, sex, year,  cu) %>% 
+  group_by(age_grp, sex, year, cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no),
+    se_drdr = (drivers_driving * (1 - drivers_driving) / (yes + no)) ^ 0.5
+  ) %>% 
+  ggplot(., aes(
+    x = age_grp, 
+    y = drivers_driving, group = factor(year), colour = factor(year), shape = factor(year))) +
+  geom_line() + geom_point() + 
+  geom_linerange(
+    aes(ymax = drivers_driving + 2 * se_drdr, ymin = drivers_driving - 2 * se_drdr)
+  ) + 
+  labs(
+    x = "Age Group", 
+    y = "Proportion of drivers driving", 
+    colour = "Year", group = "Year", shape = "Year") + 
+  scale_y_continuous(limits = c(0, 1)) + 
+  facet_wrap(~ sex)
+
+
+# Proportion of drivers driving by sex and highest qualification
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual) & !is.na(cu)) %>% 
+  filter(year %in% c(1995, 2000, 2005)) %>%
+  filter(dlo == "yes") %>% 
+  select(age_grp, sex, year,  highqual, cu) %>% 
+  group_by(age_grp, sex, year, highqual, cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no),
+    se_drdr = (drivers_driving * (1 - drivers_driving) / (yes + no)) ^ 0.5
+  ) %>% 
+  ggplot(., aes(
+    x = age_grp, 
+    y = drivers_driving, group = factor(year), colour = factor(year), shape = factor(year))) +
+  geom_line() + geom_point() + 
+  geom_linerange(
+    aes(ymax = drivers_driving + 2 * se_drdr, ymin = drivers_driving - 2 * se_drdr)
+  ) + 
+  labs(
+    x = "Age Group", 
+    y = "Proportion of drivers driving", 
+    colour = "Year", group = "Year", shape = "Year") + 
+  scale_y_continuous(limits = c(0, 1)) + 
+  facet_grid(highqual ~ sex)
+
+# Proportions driving by age and urban rural class
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  mutate(
+    age_grp = 
+      cut(
+        age, 
+        c(0, 20, 25, 35, 50, 60, 70, 999), 
+        labels = c("<20", "20-25", "26-35", "36-50", "51-60", "61-70", ">70")
+      )
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group) & !is.na(cu)) %>% 
+  filter(year %in% c(1995, 2000, 2005)) %>%
+  filter(dlo == "yes") %>% 
+  select(age_grp, sex, year,  ur_group, cu) %>% 
+  group_by(age_grp, sex, year, ur_group, cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no),
+    se_drdr = (drivers_driving * (1 - drivers_driving) / (yes + no)) ^ 0.5
+  ) %>% 
+  ggplot(., aes(
+    x = age_grp, 
+    y = drivers_driving, group = factor(ur_group), colour = factor(ur_group), shape = factor(ur_group))) +
+  geom_line() + geom_point() + 
+  geom_linerange(
+    aes(ymax = drivers_driving + 2 * se_drdr, ymin = drivers_driving - 2 * se_drdr)
+  ) + 
+  labs(
+    x = "Age Group", 
+    y = "Proportion of drivers driving", 
+    colour = "Year", group = "Year", shape = "Year") + 
+  scale_y_continuous(limits = c(0, 1)) + 
+  facet_grid(year ~ sex)
+
+
+# Proportions with driving licences  --------------------------------------
+
+
+# lattice levelplot version - proportion of drivers driving overall
 all_inds_drvs %>% 
   mutate(
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
   filter( year > 1992) %>% 
-  filter(dlo == "yes") %>% 
-  select(age, year,  cu) %>% 
-  group_by(age, year, cu) %>% 
+  select(age, year,  dlo) %>% 
+  group_by(age, year, dlo) %>% 
   tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
+  spread(dlo, n, fill = 0) %>% 
+  mutate(
+    has_driving_licence = yes / (yes + no)
   ) %>% 
   filter(age < 80 & age > 17) %>% 
-  contourplot(
-    drivers_driving ~ year * age , 
+  levelplot(
+    has_driving_licence ~ year * age , 
     data=., 
-    region=T, 
     aspect = "iso",
     strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
     ylab=list(label="Age in years", cex=1.4),
     xlab=list(label="Year", cex=1.4),
     cex=1.4,
-    col.regions= rev(colorRampPalette(brewer.pal(6, "Spectral"))(200)),
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
     main=NULL,
-    at = seq(0, 1, by = 0.1),
+    at = seq(0, 1, by = 0.01),
     labels=list(cex=1.2),
     col="black",
     scales=list(
@@ -269,11 +469,8 @@ all_inds_drvs %>%
     )
   ) 
 # dev.off()
-# 
 
-
-
-
+# lattice levelplot version - proportion of drivers driving  - by sex
 all_inds_drvs %>% 
   mutate(
     year = wave + 1990
@@ -281,81 +478,25 @@ all_inds_drvs %>%
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
   filter( year > 1992) %>% 
   filter(dlo == "yes") %>% 
-  select(age, year,  cu) %>% 
-  group_by(age, year, cu) %>% 
+  select(age, year,  sex, cu) %>% 
+  group_by(age, year, sex, cu) %>% 
   tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
-  ) %>% 
-  filter(age < 80 & age > 17) %>%
-  
-  
-
-
-# by sex
-all_inds_drvs %>% 
+  spread(cu, n, fill = 0) %>% 
   mutate(
-    year = wave + 1990
-  ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
-  filter( year > 1992) %>% 
-  filter(dlo == "yes") %>% 
-  select(sex, age, year,  cu) %>% 
-  group_by(sex, age, year, cu) %>% 
-  tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
-  ) %>% 
-  filter(age < 80 & age > 17) %>% 
-  ggplot(.) +
-  geom_tile(mapping=aes(x=year, y = age, fill = drivers_driving)) +
-  facet_wrap(~ sex) + 
-  scale_fill_gradientn(colours = rainbow(7)) + 
-  theme_minimal() + 
-  labs(
-    title = "Level plot of proportions of licence holders driving by age and year",
-    x = "Year",
-    y = "Age in years"
-  )
-
-ggsave("figures/prop_dlo_driving_bysex.png", height = 15, width =30, dpi = 300, units = "cm")
-
-
-# Contourplot - by sex, unsmoothed ----------------------------------------
-
-
-all_inds_drvs %>% 
-  mutate(
-    year = wave + 1990
-  ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
-  filter( year > 1992) %>% 
-  filter(dlo == "yes") %>% 
-  select(sex, age, year,  cu) %>% 
-  group_by(sex, age, year, cu) %>% 
-  tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
+    drivers_driving = yes / (yes + no)
   ) %>% 
   filter(age < 80 & age > 17) %>% 
   levelplot(
-    drivers_driving ~ year * age |sex, 
+    drivers_driving ~ year * age | sex, 
     data=., 
-    region=T, 
     aspect = "iso",
     strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
     ylab=list(label="Age in years", cex=1.4),
     xlab=list(label="Year", cex=1.4),
     cex=1.4,
-    col.regions= rev(colorRampPalette(brewer.pal(6, "Spectral"))(200)),
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
     main=NULL,
-    at = seq(0, 1, by = 0.1),
+    at = seq(0, 1, by = 0.01),
     labels=list(cex=1.2),
     col="black",
     scales=list(
@@ -365,105 +506,43 @@ all_inds_drvs %>%
     )
   ) 
 
-
-
-# Contour plot, by sex, smoothed ------------------------------------------
-
-
-all_inds_drvs %>% 
-  mutate(
-    year = wave + 1990
-  ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu)) %>% 
-  filter( year > 1992) %>% 
-  filter(dlo == "yes") %>% 
-  select(sex, age, year,  cu) %>% 
-  group_by(sex, age, year, cu) %>% 
-  tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
-  ) %>% 
-  smooth_var(., group_vars = "sex", smooth_var = "drivers_driving", smooth_par = 0.5) %>% 
-  filter(age < 80 & age > 17) %>% 
-  levelplot(
-    drivers_driving ~ year * age |sex, 
-    data=., 
-    region=T, 
-    aspect = "iso",
-    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
-    ylab=list(label="Age in years", cex=1.4),
-    xlab=list(label="Year", cex=1.4),
-    cex=1.4,
-    col.regions= rev(colorRampPalette(brewer.pal(6, "Spectral"))(200)),
-    main=NULL,
-    at = seq(0, 1, by = 0.1),
-    labels=list(cex=1.2),
-    col="black",
-    scales=list(
-      x=list(cex=1.4), 
-      y=list(cex=1.4),
-      alternating=3
-    )
-  ) 
-
-
-# by sex and qualification
+# proportion of drivers driving, by sex and highest qual
 all_inds_drvs %>% 
   mutate(
     year = wave + 1990
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu) & !is.na(highqual)) %>% 
   filter( year > 1992) %>% 
-  filter(dlo == "yes") %>% 
-  select(highqual, sex, age, year,  cu) %>% 
-  group_by(highqual, sex, age, year, cu) %>% 
+  mutate(highqual = recode(
+    highqual, 
+    "
+    'further non-vocational' = 'H';
+    'further vocational' = 'M';
+    'no further' = 'L'
+    ",
+    levels = c("L", "M", "H"), as.factor.result =T
+  ),
+  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>%  
+  select(age, year, sex, highqual, cu) %>% 
+  group_by(age, year, sex, highqual, cu) %>% 
   tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no)
   ) %>% 
   filter(age < 80 & age > 17) %>% 
-  ggplot(.) +
-  geom_tile(mapping=aes(x=year, y = age, fill = drivers_driving)) +
-  facet_grid(highqual~ sex) + 
-  scale_fill_gradientn(colours = rainbow(7)) + 
-  theme_minimal() + 
-  labs(
-    title = "Level plot of proportions of licence holders driving by age and year",
-    x = "Year",
-    y = "Age in years"
-  )
-
-all_inds_drvs %>% 
-  mutate(
-    year = wave + 1990
-  ) %>% 
-  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(cu) & !is.na(highqual)) %>% 
-  filter( year > 1992) %>% 
-  filter(dlo == "yes") %>% 
-  select(highqual, sex, age, year,  cu) %>% 
-  group_by(highqual, sex, age, year, cu) %>% 
-  tally %>% 
-  spread(cu, n) %>% 
-  mutate(no = ifelse(is.na(no), 0, no),
-         yes = ifelse(is.na(yes), 0, yes),
-         drivers_driving = yes / (yes + no)
-  ) %>% 
-  filter(age < 80 & age >= 20) %>% 
   levelplot(
-    drivers_driving ~ year * age | highqual + sex, 
+    drivers_driving ~ year * age | sex + highqual, 
     data=., 
-    region=T, 
+    aspect = "iso",
     strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
     ylab=list(label="Age in years", cex=1.4),
     xlab=list(label="Year", cex=1.4),
     cex=1.4,
-    col.regions= colorRampPalette(brewer.pal(8, "Spectral"))(200),
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
     main=NULL,
-    at = seq(0, 1, by = 0.025),
+    at = seq(0, 1, by = 0.02),
     labels=list(cex=1.2),
     col="black",
     scales=list(
@@ -475,38 +554,291 @@ all_inds_drvs %>%
 
 
 
-
-# proportion who have driving licences by groups of wave
-all_inds_drvs %>%   
-  filter(!is.na(sex)) %>% 
-  mutate(wave_grp = 
-           cut(wave, 
-               breaks = c(1, 4, 9, 14, 20), 
-               include.lowest = T, 
-               labels = c("early 90s", "late 90s", "early 2000s", "late 2000s")
-           )
+# lattice levelplot version - proportion of drivers driving overall
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
   ) %>% 
-  filter(age <= 80) %>% 
-  arrange(wave_grp, sex, age) %>% 
-  group_by(wave_grp, sex, age) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)) %>% 
+  filter( year > 1992) %>% 
+  select(year, age, dlo) %>% 
+  arrange(year, age) %>% 
+  group_by(year, age) %>% 
   mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
-  summarise(driv_prop = mean(does_drive, na.rm=T)) %>% 
-  ggplot(. ) +
-  geom_line(
-    aes(
-      x = age, 
-      y = driv_prop, 
-      colour = wave_grp, 
-      group = wave_grp
-    )) + 
-  facet_wrap( ~ sex) + 
-  labs(
-    title = "Proportion with driving licence by group of waves, sex, and year",
-    x = "Age (years)",
-    y = "Proportion holding driving licence"
-  )
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age < 80 & age > 17) %>% 
+  levelplot(
+    drive_prop ~ year * age , 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.01),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
+# dev.off()
 
-ggsave("figures/propdrive_wavegrp_sex_age.png", height = 12, width = 15, dpi = 300, units = "cm")
+# lattice levelplot version - proportion of drivers driving  - by sex
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)) %>% 
+  filter( year > 1992) %>% 
+  select(year, age, sex, dlo) %>% 
+  arrange(year, sex, age) %>% 
+  group_by(year, sex, age) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age < 80 & age > 17) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex , 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.01),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.4), 
+      y=list(cex=1.4),
+      alternating=3
+    )
+  ) 
+
+# proportion of drivers driving, by sex and highest qual
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual)) %>% 
+  filter( year > 1992) %>% 
+  mutate(highqual = recode(
+    highqual, 
+    "
+      'further non-vocational' = 'H';
+      'further vocational' = 'M';
+      'no further' = 'L'
+    ",
+    levels = c("L", "M", "H"), as.factor.result =T
+  ),
+  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>%  
+  select(year, age, sex, highqual, dlo) %>% 
+  arrange(year, sex, highqual, age) %>% 
+  group_by(year, sex, highqual, age) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age < 80 & age > 17) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex + highqual, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+
+
+
+# Focus on 20-35 year olds 
+
+# proportion of drivers driving, by sex and highest qual
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual)) %>% 
+  filter( year > 1992) %>% 
+  mutate(highqual = recode(
+    highqual, 
+    "
+    'further non-vocational' = 'H';
+    'further vocational' = 'M';
+    'no further' = 'L'
+    ",
+    levels = c("L", "M", "H"), as.factor.result =T
+  ),
+  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>%  
+  select(year, age, sex, highqual, dlo) %>% 
+  arrange(year, sex, highqual, age) %>% 
+  group_by(year, sex, highqual, age) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age <= 35 & age >= 20) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex + highqual, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+
+
+# Proportion with driving licence, by urban/rural class
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  filter( year > 1992) %>% 
+  mutate(ur_group = recode(
+    ur_group, 
+    "
+    'urban' = 'U';
+    'nonurban' = 'NU'
+    ",
+    as.factor.result =T
+  ),
+  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>%  
+  select(year, age, sex, ur_group, dlo) %>% 
+  arrange(year, sex, ur_group, age) %>% 
+  group_by(year, sex, ur_group, age) %>% 
+  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex + ur_group, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+
+
+# Proportion with GHQ > 2, by sex
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(ghq)) %>%
+  select(sex, age, year, ghq) %>% 
+  mutate(highghq = cut(ghq, c(-Inf, 2, Inf), labels = c("low", "high"), ordered_result = T)) %>% 
+  filter( year > 1992) %>%
+  select(-ghq) %>% 
+  group_by(sex, age, year, highghq) %>% 
+  tally() %>% 
+  spread(highghq, n) %>% 
+  mutate(prop_hq = high / (low + high)) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    prop_hq ~ year * age | sex, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+
+# Proportion with GHQ > 2, by sex and highqual
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(ghq) & !is.na(highqual)) %>%
+  select(sex, age, year, highqual, ghq) %>%
+  mutate(highqual = recode(
+    highqual, 
+    "
+    'further non-vocational' = 'H';
+    'further vocational' = 'M';
+    'no further' = 'L'
+    ",
+    levels = c("L", "M", "H"), as.factor.result =T
+    ),
+    sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>% 
+  mutate(highghq = cut(ghq, c(-Inf, 2, Inf), labels = c("low", "high"), ordered_result = T)) %>% 
+  filter( year > 1992) %>%
+  select(-ghq) %>% 
+  group_by(sex, age, year, highqual, highghq) %>% 
+  tally() %>% 
+  spread(highghq, n) %>% 
+  mutate(prop_hq = high / (low + high)) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    prop_hq ~ year * age | sex + highqual, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
 
 
 # Now to look at cohorts

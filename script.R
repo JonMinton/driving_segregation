@@ -23,26 +23,14 @@
 
 rm(list = ls())
 
-require(readr)
-
-require(stringr)
-require(tidyr)
-require(car)
-
-require(Zelig)
-
-require(ggplot2)
-
-require(RColorBrewer)
-require(lattice)
-require(latticeExtra)
-
-
-require(plyr)
-require(dplyr)
-
-require(fields) 
-require(spatstat)
+pacman::p_load(
+  plyr,
+  readr, stringr, 
+  tidyr, car, dplyr,
+  ggplot2,   cowplot,
+  RColorBrewer, 
+  lattice, latticeExtra
+)
 
 ############################################################################################################
 ############################################################################################################
