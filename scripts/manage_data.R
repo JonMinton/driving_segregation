@@ -604,8 +604,8 @@ fn <- function(x){
   ur_enw <- recode(
     x$ur01ind,
     "
-    5 = 'urban';
-    c(1, 2, 3, 4, 6, 7, 8) = 'nonurban';
+    c(1, 5) = 'urban';
+    c(2, 3, 4, 6, 7, 8) = 'nonurban';
     else = NA
     "
   )
