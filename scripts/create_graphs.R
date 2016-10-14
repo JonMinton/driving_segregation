@@ -2271,3 +2271,105 @@ tmp1 <-   group_by(highqual, age, year, dlo) %>%
   )
 
 
+
+#Tenure levelplots 
+png(filename = "figures/tenure_overall_prop private renters - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(simpletenure)) %>% 
+  select(age, year, sex, simpletenure) %>% 
+  group_by(age, year, sex) %>% 
+  filter(age <= 80) %>% 
+  summarise(prop_rent = length(simpletenure[simpletenure == "private renter"]) / length(simpletenure)) %>% 
+  levelplot(
+    prop_rent ~ year * age | sex, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
+#Tenure levelplots 
+png(filename = "figures/tenure_overall_prop home owners - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(simpletenure)) %>% 
+  select(age, year, sex, simpletenure) %>% 
+  group_by(age, year, sex) %>% 
+  filter(age <= 80) %>% 
+  summarise(prop_rent = length(simpletenure[simpletenure == "owner"]) / length(simpletenure)) %>% 
+  levelplot(
+    prop_rent ~ year * age | sex, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
+png(filename = "figures/tenure_overall_prop social renters - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(simpletenure)) %>% 
+  select(age, year, sex, simpletenure) %>% 
+  group_by(age, year, sex) %>% 
+  filter(age <= 80) %>% 
+  summarise(prop_rent = length(simpletenure[simpletenure == "social renter"]) / length(simpletenure)) %>% 
+  levelplot(
+    prop_rent ~ year * age | sex, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = seq(0, 1, by = 0.02),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
