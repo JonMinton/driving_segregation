@@ -136,21 +136,129 @@ fn <- function(x){
     "
   )
   
-  out$drives <- NA
+  # dlo: driving licence ownership
+  # co: car ownership
+  
+  
+  out$dlo <- NA
   if (x$WAVE[1] %in% c("A", "B")){
-    out$drives[x$DRIVER==1] <- "yes"
-    out$drives[x$DRIVER==2] <- "no"
+    out$dlo[x$DRIVER==1] <- "yes"
+    out$dlo[x$DRIVER==2] <- "no"
   } else {
-    out$drives[x$CARUSE==3] <- "no"
-    out$drives[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
+    out$dlo[x$CARUSE==3] <- "no"
+    out$dlo[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
   }
+  
+  out$cu <- NA  # car use
+  if (x$WAVE[1] %in% c("A", "B")){
+    out$cu[x$CARUSE==1] <- "yes"
+    out$cu[x$CARUSE==3] <- "no"
+  } else {
+    out$cu[x$CARUSE==1] <- "yes"
+    out$cu[x$CARUSE==2] <- "no"
+    
+  }
+  
   out$wave <- which(LETTERS %in% x$WAVE)
-  out <- out %>% select_(~pid, ~hid, ~wave, ~sex, ~age, ~drives, ~ghq, ~neigh, ~isced, ~highqual)
+  out <- out %>% select_(~pid, ~hid, ~wave, ~sex, ~age, ~dlo, ~cu, ~ghq, ~neigh, ~isced, ~highqual)
   return(out)
   }
 
 all_inds_drvs <- ldply(all_inds_ss, fn) %>% tbl_df
 
+
+# # Variation of above for looking at neighbourhood characteristics ---------
+# 
+# # variable with pid, wave, sex, car_driver (derived), age, ghq
+# 
+# fn <- function(x){
+#   out <- x %>% select_(
+#     pid = ~PID, hid = ~HID, sex = ~SEX, age = ~AGE, ghq = ~HLGHQ2
+#                        ) %>% 
+#     mutate(
+#       opngbha = NA, 
+#       opngbhb = NA,
+#       opngbhc = NA,
+#       opngbhd = NA,
+#       opngbhe = NA,
+#       opngbhf = NA,
+#       opngbhg = NA,
+#       opngbhh = NA
+#       
+#            )
+#   
+#   if ("OPNGBHA" %in% names(x)) {out$opngbha = x$OPNGBHA}
+#   if ("OPNGBHB" %in% names(x)) {out$opngbhb = x$OPNGBHB}
+#   if ("OPNGBHC" %in% names(x)) {out$opngbhc = x$OPNGBHC}
+#   if ("OPNGBHD" %in% names(x)) {out$opngbhd = x$OPNGBHD}
+#   if ("OPNGBHE" %in% names(x)) {out$opngbhe = x$OPNGBHE}
+#   if ("OPNGBHF" %in% names(x)) {out$opngbhf = x$OPNGBHF}
+#   if ("OPNGBHG" %in% names(x)) {out$opngbhg = x$OPNGBHG}
+#   if ("OPNGBHH" %in% names(x)) {out$opngbhh = x$OPNGBHH}
+#   
+# #   ~OPNGBHA, # feels belongs to neighbourhood
+# #   ~OPNGBHB, # local friends mean a lot
+# #   ~OPNGBHC, # advice obtanable locally
+# #   ~OPNGBHD, # can borrow things from neighbours
+# #   ~OPNGBHE, # willing to improve neighbourhood
+# #   ~OPNGBHF, # plan to stay in neighbourhood
+# #   ~OPNGBHG, # am similar to others in neighbourhood
+# #   ~OPNGBHH # talk regularly to neighbourhood
+#   
+#   
+#   out <- out %>% mutate(
+#     sex = recode(sex, "1 = 'male'; 2 = 'female'; else = NA"),
+#     ghq = ifelse(ghq < 0, NA, ghq),
+#     age = ifelse(age < 0, NA, age)
+#   )
+#   out$neigh <- NA
+#   if ("NEIGH" %in% names(x)){
+#     out$neigh <- recode(
+#       x$NEIGH, 
+#       "
+#       1 = 'yes';
+#       2 = 'no'; 
+#       3 = 'mixed';
+#       else = NA
+#       ")
+#   }
+#   out$isced <- recode(
+#     x$ISCED, 
+#     "
+#     0 = 'not defined';
+#     1 = 'primary'; 
+#     2 = 'low secondary';
+#     3 = 'low sec-voc';
+#     4 = 'hisec mivoc';
+#     5 = 'higher voc';
+#     6 = 'first degree';
+#     7 = 'higher degree';
+#     else = NA
+#     "
+#   )
+#   
+#   out$highqual <- recode(
+#     out$isced,
+#     "
+#     c('not defined', 'primary', 'secondary') = 'no further';
+#     c('low sec-voc', 'hisec mivoc', 'higher voc') = 'further vocational';
+#     c('first degree', 'higher degree') = 'further non-vocational';
+#     else = NA
+#     "
+#   )
+#   
+# 
+#   
+#   out$wave <- which(LETTERS %in% x$WAVE)
+#   return(out)
+#   }
+# 
+# all_inds_nhds <- ldply(all_inds_ss, fn) %>% tbl_df
+# 
+# all_inds_nhds <- all_inds_nhds %>% filter(wave %in% c(8, 13, 18))
+# 
+# 
+# write_csv(x = all_inds_nhds, path = "nhd_bhps_for_johanna.csv")
 
 # Data - egoalt files -----------------------------------------------------
 
@@ -233,6 +341,21 @@ fn <- function(x){
 all_egoalts <- ldply(all_egoalts_ss, fn) %>% tbl_df
 
 rm(all_egoalts_ss, rel_lookup, simple_rel_lookup)
+
+
+
+# Household composition ---------------------------------------------------
+
+
+hh_composition <- all_egoalts %>% 
+  group_by(hid, wave) %>% 
+  summarise(
+    num_hh_members = length(unique(pid)), 
+    num_children = length(unique(pid[simple_relation == "child"]))
+  ) %>% 
+  mutate(num_adults = num_hh_members - num_children)
+
+
 
 
 
@@ -429,7 +552,8 @@ dta_files <- list.files(path = dta_path, pattern = "[a-z]{1}ur01ind_protect\\.ta
 all_urbrur <- llply(
   paste0(dta_path, dta_files), 
   read_delim,
-  delim = "\t"
+  delim = "\t",
+  col_types = "ic"
 )
 
 fn <- function(x){
@@ -472,8 +596,7 @@ fn <- function(x){
     x$ur01ind,
     "
     c(1, 2) = 'urban';
-    c(3, 4, 6, 7) = 'suburban';
-    c(5, 8) = 'rural';
+    c(3, 4, 5, 6, 7, 8) = 'nonurban';
     else = NA
     "
   )
@@ -482,8 +605,7 @@ fn <- function(x){
     x$ur01ind,
     "
     c(1, 5) = 'urban';
-    c(2, 6, 7, 8) = 'suburban';
-    c(3, 4) = 'rural';
+    c(2, 3, 4, 6, 7, 8) = 'nonurban';
     else = NA
     "
   )
@@ -501,3 +623,5 @@ fn <- function(x){
 
 all_hhlds <- fn(all_hhlds)
 all_inds_drvs <- all_inds_drvs %>% join(all_hhlds) %>% tbl_df
+
+all_inds_drvs <- all_inds_drvs %>% left_join(hh_composition)
