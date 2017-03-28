@@ -2,32 +2,60 @@
 # Using UKHLS
 # Data - individual  ------------------------------------------------------
 
+# Starting from wave 2 as this is when BHPS OSMs first included
+
+dta_path <- "E:/Dropbox/Data/ukhls/6614TAB_7B010178BD0798C37F8215AE82667F56/UKDA-6614-tab/tab/"
+dta_files <- list.files(path = dta_path, pattern = "[b-z]_indresp\\.tab")
+
+# AIM should be to do more in a single function, even if effectively the function should 
+# be broken into clearly defined parts 
+
+tidy_select_and_lengthen <- function(
+  file_location,
+  variable_patterns
+  ){
+  
+  out <- read_delim(file_location, delim = "\t")
+  
+  nms <- names(out)
+  
+  selection <- str_detect(
+    nms,
+    pattern = search_patterns
+  )
+  
+  out <- out[,selection]
+  tmp <- names(out)
+
+  wave_code <- str_subset(tmp, "^[a-z]_") %>% str_extract("^[a-z]{1}")
+  if(length(unique(wave_code)) != 1) {stop("More than one possible wave code identified") }
+  wave <- wave_code[1]
+  
+  pid <- out$pid
+  
+  out <- out %>% select_(quote(-pid))
+  names(out) <- names(out) %>% str_replace_all("^[a-z]{1}_", "")
+  out <- data.frame(pid = pid, wave = wave, out)
+  out
+}
 
 
-dta_path <- "E:/Dropbox/Data/ukhls/6614STATA11_SE_2C6D57CCB5E84730DDF13710131FF09B/UKDA-6614-stata11_se/stata11_se/"
-dta_files <- list.files(path = dta_path, pattern = "[a-z]_indresp\\.dta")
-
-all_inds <- map(
-  paste0(dta_path, dta_files), 
-  haven::read_dta
-)
 
 search_patterns <- c(
-  "^PID$",
-  "^[A-Z]{1}SEX",
-  "^[A-Z]{1}HID",
-  "^[A-Z]{1}DRIVER",
-  "^[A-Z]{1}CARUSE",
-  "^[A-Z]{1}HLGHQ2",
-  "^[A-Z]{1}AGE$",
-  "^[A-Z]{1}FEEND$", # Further education leaving age
-  "^[A-Z]{1}FENOW$", # Still in further education
-  "^[A-Z]{1}ISCED$", # ISCED level (highest qualification)
-  "^[A-Z]{1}PLBORNC$", # Country of birth
-  "^[A-Z]{1}RACE$", # ethnic group membership
-  "^[A-Z]{1}RACEL$", # ethnic group membership (long version)
-  "^[A-Z]{1}NEIGH$", # neighbourhood good place to live
-  "^[A-Z]{1}OPNGBH[A-H]{1}$" # see below
+  "^pid$", # WAVE 2 onwards - BHPS original sample members
+  "^[a-z]{1}_sex$", # Moved to other characteristics file 
+  "^[a-z]{1}_hidp",
+  "^[a-z]{1}_drive", # Respondent has driving licence
+  "^[a-z]{1}_caruse", # Has use of car or van
+  "^[a-z]{1}_scghq1_dv",
+  "^[a-z]{1}_age_cr$", # Age corrected 
+  "^[a-z]{1}_feend$", # Further education leaving age
+  "^[a-z]{1}_fenow$", # Still in further education
+  "^[a-z]{1}_qfhigh_dv$", # highest qualification (derived variable)
+  "^[a-z]{1}_plbornc$", # Country of birth
+  "^[a-z]{1}_racel$", # ethnic group membership (long version)
+  #  "^[A-Z]{1}NEIGH$", # neighbourhood good place to live
+  "^[A-Z]{1}scopngbh[a-h]{1}$" # see below
   #   OPNGBHA # feels belongs to neighbourhood
   #   OPNGBHB # local friends mean a lot
   #   OPNGBHC # advice obtanable locally
@@ -38,108 +66,80 @@ search_patterns <- c(
   #   OPNGBHH # talk regularly to neighbourhood
 ) %>% paste( collapse = "|")
 
-
-fn <- function(x){
-  nms <- names(x)
-  
-  selection <- str_detect(
-    nms ,
-    pattern = search_patterns
-  )
-  
-  out <- x[,selection]
-  tmp <- names(out)
-  WAVE <- tmp[str_detect(tmp, pattern = "^[A-Z]{1}SEX")]  %>% str_replace(., "SEX", "")
-  PID <- out$PID
-  out <- out %>% select_(quote(-PID))
-  names(out) <- names(out) %>% str_replace_all("^[A-Z]{1}", "")
-  out <- data.frame(PID = PID, WAVE = WAVE, out)
-  return(out)
-}
+#debug(tidy_select_and_lengthen)
 
 all_inds_ss <- map(
-  all_inds,
-  fn
+  paste0(dta_path, dta_files), 
+  tidy_select_and_lengthen, 
+  variable_patterns = search_patterns
+) %>% 
+  reduce(bind_rows) %>% 
+  as_data_frame
+
+all_inds_ss %>% 
+  mutate(
+    sex = car::recode(
+      sex, 
+      "1 = 'male'; 2 = 'female'; else = NA"
+    ),
+#    ghq = ifelse(ghq < 0, NA, ghq),
+    age = ifelse(age_cr < 0, NA, age_cr),
+    isced = car::recode(
+      qfhigh_dv,
+      "
+        1 = 'degree';
+        2 = 'other higher degree';
+        3 = 'a level etc';
+        4 = 'gsce etc';
+        5 = 'other qualification';
+        9 = 'no qualification';
+        else = NA
+        "
+    ),
+    highqual = car::recode(
+      isced,
+    "
+      c('no qualification') = 'no further';
+      c('gsce etc',  'other qualification') = 'further vocational';
+      c('degree', 'a level etc') = 'further non-vocational';
+      else = NA
+    "
+  )
 )
+
+
 
 
 # variable with pid, wave, sex, car_driver (derived), age, ghq
 
-fn <- function(x){
-  out <- x %>% select_(pid = ~PID, hid = ~HID, sex = ~SEX, age = ~AGE, ghq = ~HLGHQ2)
-  out <- out %>% mutate(
-    sex = car::recode(
-      sex, 
-      "1 = 'male'; 2 = 'female'; else = NA"
-      ),
-    ghq = ifelse(ghq < 0, NA, ghq),
-    age = ifelse(age < 0, NA, age)
-  )
-  
-  out$neigh <- NA
-  if ("NEIGH" %in% names(x)){
-    out$neigh <- car::recode(
-      x$NEIGH,
-      "
-      1 = 'yes';
-      2 = 'no';
-      3 = 'mixed';
-      else = NA
-      ")
-  }
-  out$isced <- car::recode(
-    x$ISCED,
-    "
-    0 = 'not defined';
-    1 = 'primary';
-    2 = 'low secondary';
-    3 = 'low sec-voc';
-    4 = 'hisec mivoc';
-    5 = 'higher voc';
-    6 = 'first degree';
-    7 = 'higher degree';
-    else = NA
-    "
-  )
-
-  out$highqual <- car::recode(
-    out$isced,
-    "
-    c('not defined', 'primary', 'secondary') = 'no further';
-    c('low sec-voc', 'hisec mivoc', 'higher voc') = 'further vocational';
-    c('first degree', 'higher degree') = 'further non-vocational';
-    else = NA
-    "
-  )
-
   # dlo: driving licence ownership
   # co: car ownership
-
-
-  out$dlo <- NA
-  if (x$WAVE[1] %in% c("A", "B")){
-    out$dlo[x$DRIVER==1] <- "yes"
-    out$dlo[x$DRIVER==2] <- "no"
-  } else {
-    out$dlo[x$CARUSE==3] <- "no"
-    out$dlo[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
-  }
-
-  out$cu <- NA  # car use
-  if (x$WAVE[1] %in% c("A", "B")){
-    out$cu[x$CARUSE==1] <- "yes"
-    out$cu[x$CARUSE==3] <- "no"
-  } else {
-    out$cu[x$CARUSE==1] <- "yes"
-    out$cu[x$CARUSE==2] <- "no"
-
-  }
-
-  out$wave <- which(LETTERS %in% x$WAVE)
-  out <- out %>% 
-    select_(~pid, ~hid, ~wave, ~sex, ~age, ~dlo, ~cu, ~ghq, ~neigh, ~isced, ~highqual) %>% 
-    as_data_frame
-  return(out)
+# 
+# 
+#   out$dlo <- NA
+#   if (x$WAVE[1] %in% c("A", "B")){
+#     out$dlo[x$DRIVER==1] <- "yes"
+#     out$dlo[x$DRIVER==2] <- "no"
+#   } else {
+#     out$dlo[x$CARUSE==3] <- "no"
+#     out$dlo[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
+#   }
+# 
+#   out$cu <- NA  # car use
+#   if (x$WAVE[1] %in% c("A", "B")){
+#     out$cu[x$CARUSE==1] <- "yes"
+#     out$cu[x$CARUSE==3] <- "no"
+#   } else {
+#     out$cu[x$CARUSE==1] <- "yes"
+#     out$cu[x$CARUSE==2] <- "no"
+# 
+#   }
+# 
+#   out$wave <- which(LETTERS %in% x$WAVE)
+#   out <- out %>% 
+#     select_(~pid, ~hid, ~wave, ~sex, ~age, ~dlo, ~cu, ~ghq, ~neigh, ~isced, ~highqual) %>% 
+#     as_data_frame
+#   return(out)
   }
 
 all_inds_drvs <- map_df(all_inds_ss, fn) 

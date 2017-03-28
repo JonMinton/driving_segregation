@@ -25,7 +25,7 @@ rm(list = ls())
 
 pacman::p_load(
   tidyverse,
-  forcats,
+  forcats, stringr,
   ggplot2,   cowplot,
   RColorBrewer, 
   lattice, latticeExtra
