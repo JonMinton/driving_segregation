@@ -1,5 +1,5 @@
 
-
+# Using BHPS
 # Data - individual  ------------------------------------------------------
 
 
@@ -7,63 +7,28 @@
 dta_path <- "E:/data/bhps/unzipped/UKDA-5151-tab/tab/"
 dta_files <- list.files(path = "E:/data/bhps/unzipped/UKDA-5151-tab/tab/", pattern = "indresp\\.tab")
 
-all_inds <- llply(
+all_inds <- map(
   paste0(dta_path, dta_files), 
   read_delim,
   delim = "\t"
 )
 
-fn <- function(x){
-  nms <- names(x)
-  
-  selection <- str_detect(
-    nms ,
-    pattern = "^PID$"
-  ) | str_detect(
-    nms , 
-    pattern = "^[A-Z]{1}SEX"
-  ) | str_detect(
-    nms , 
-    pattern = "^[A-Z]{1}HID"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}DRIVER"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}CARUSE"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}HLGHQ2"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}AGE$"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}FEEND$" # Further education leaving age
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}FENOW$" # Still in further education
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}ISCED$" # ISCED level (highest qualification)
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}PLBORNC$" # Country of birth
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}RACE$" # ethnic group membership
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}RACEL$" # ethnic group membership (long version)
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}NEIGH$" # neighbourhood good place to live
-  )  | str_detect(
-    nms , 
-    "^[A-Z]{1}OPNGBH[A-H]{1}$" # see below
-  )
-  
-  
+search_patterns <- c(
+  "^PID$",
+  "^[A-Z]{1}SEX",
+  "^[A-Z]{1}HID",
+  "^[A-Z]{1}DRIVER",
+  "^[A-Z]{1}CARUSE",
+  "^[A-Z]{1}HLGHQ2",
+  "^[A-Z]{1}AGE$",
+  "^[A-Z]{1}FEEND$", # Further education leaving age
+  "^[A-Z]{1}FENOW$", # Still in further education
+  "^[A-Z]{1}ISCED$", # ISCED level (highest qualification)
+  "^[A-Z]{1}PLBORNC$", # Country of birth
+  "^[A-Z]{1}RACE$", # ethnic group membership
+  "^[A-Z]{1}RACEL$", # ethnic group membership (long version)
+  "^[A-Z]{1}NEIGH$", # neighbourhood good place to live
+  "^[A-Z]{1}OPNGBH[A-H]{1}$" # see below
   #   OPNGBHA # feels belongs to neighbourhood
   #   OPNGBHB # local friends mean a lot
   #   OPNGBHC # advice obtanable locally
@@ -72,8 +37,16 @@ fn <- function(x){
   #   OPNGBHF # plan to stay in neighbourhood
   #   OPNGBHG # am similar to others in neighbourhood
   #   OPNGBHH # talk regularly to neighbourhood
+) %>% paste( collapse = "|")
+
+
+fn <- function(x){
+  nms <- names(x)
   
-  
+  selection <- str_detect(
+    nms ,
+    pattern = search_patterns
+  )
   
   out <- x[,selection]
   tmp <- names(out)
@@ -85,7 +58,7 @@ fn <- function(x){
   return(out)
 }
 
-all_inds_ss <- llply(
+all_inds_ss <- map(
   all_inds,
   fn
 )
@@ -96,26 +69,30 @@ all_inds_ss <- llply(
 fn <- function(x){
   out <- x %>% select_(pid = ~PID, hid = ~HID, sex = ~SEX, age = ~AGE, ghq = ~HLGHQ2)
   out <- out %>% mutate(
-    sex = recode(sex, "1 = 'male'; 2 = 'female'; else = NA"),
+    sex = car::recode(
+      sex, 
+      "1 = 'male'; 2 = 'female'; else = NA"
+      ),
     ghq = ifelse(ghq < 0, NA, ghq),
     age = ifelse(age < 0, NA, age)
   )
+  
   out$neigh <- NA
   if ("NEIGH" %in% names(x)){
-    out$neigh <- recode(
-      x$NEIGH, 
+    out$neigh <- car::recode(
+      x$NEIGH,
       "
       1 = 'yes';
-      2 = 'no'; 
+      2 = 'no';
       3 = 'mixed';
       else = NA
       ")
   }
-  out$isced <- recode(
-    x$ISCED, 
+  out$isced <- car::recode(
+    x$ISCED,
     "
     0 = 'not defined';
-    1 = 'primary'; 
+    1 = 'primary';
     2 = 'low secondary';
     3 = 'low sec-voc';
     4 = 'hisec mivoc';
@@ -125,8 +102,8 @@ fn <- function(x){
     else = NA
     "
   )
-  
-  out$highqual <- recode(
+
+  out$highqual <- car::recode(
     out$isced,
     "
     c('not defined', 'primary', 'secondary') = 'no further';
@@ -135,11 +112,11 @@ fn <- function(x){
     else = NA
     "
   )
-  
+
   # dlo: driving licence ownership
   # co: car ownership
-  
-  
+
+
   out$dlo <- NA
   if (x$WAVE[1] %in% c("A", "B")){
     out$dlo[x$DRIVER==1] <- "yes"
@@ -148,7 +125,7 @@ fn <- function(x){
     out$dlo[x$CARUSE==3] <- "no"
     out$dlo[x$CARUSE==1 | x$CARUSE == 2] <- "yes"
   }
-  
+
   out$cu <- NA  # car use
   if (x$WAVE[1] %in% c("A", "B")){
     out$cu[x$CARUSE==1] <- "yes"
@@ -156,15 +133,17 @@ fn <- function(x){
   } else {
     out$cu[x$CARUSE==1] <- "yes"
     out$cu[x$CARUSE==2] <- "no"
-    
+
   }
-  
+
   out$wave <- which(LETTERS %in% x$WAVE)
-  out <- out %>% select_(~pid, ~hid, ~wave, ~sex, ~age, ~dlo, ~cu, ~ghq, ~neigh, ~isced, ~highqual)
+  out <- out %>% 
+    select_(~pid, ~hid, ~wave, ~sex, ~age, ~dlo, ~cu, ~ghq, ~neigh, ~isced, ~highqual) %>% 
+    as_data_frame
   return(out)
   }
 
-all_inds_drvs <- ldply(all_inds_ss, fn) %>% tbl_df
+all_inds_drvs <- map_df(all_inds_ss, fn) 
 
 
 # # Variation of above for looking at neighbourhood characteristics ---------
@@ -280,29 +259,26 @@ rm(rel_lookup2)
 
 
 
-all_egoalts <- llply(
+all_egoalts <- map(
   paste0(dta_path, dta_files),
   read_delim,
   delim = "\t"
 )
 
+search_patterns <- c(
+  "^[A-Z]{1}HID",
+  "PNO$",
+  "REL$",
+  "PID$"
+) %>% paste(collapse = "|")
 
 fn <- function(x){
   nms <- names(x)
   
   selection <- str_detect(
     nms , 
-    pattern = "^[A-Z]{1}HID"
-  ) | str_detect(
-    nms , 
-    "PNO$"
-  ) | str_detect(
-    nms , 
-    "REL$"
-  ) | str_detect(
-    nms , 
-    "PID$"
-  ) 
+    search_patterns
+  )
   
   out <- x[,selection]
   PID <- out$PID
@@ -314,7 +290,7 @@ fn <- function(x){
   return(out)
 }
 
-all_egoalts_ss <- llply(
+all_egoalts_ss <- map(
   all_egoalts,
   fn
 )
@@ -334,11 +310,11 @@ fn <- function(x){
   out <- out %>% select_(~hid, ~wave, ~pid, ~pno, ~opno, ~opid,
                         relation = ~rel,
                         simple_relation = ~rel_simple
-  )
+  ) %>% as_data_frame
   return(out)
 }
 
-all_egoalts <- ldply(all_egoalts_ss, fn) %>% tbl_df
+all_egoalts <- map_df(all_egoalts_ss, fn) 
 
 rm(all_egoalts_ss, rel_lookup, simple_rel_lookup)
 
@@ -352,7 +328,7 @@ hh_composition <- all_egoalts %>%
   summarise(
     num_hh_members = length(unique(pid)), 
     num_children = length(unique(pid[simple_relation == "child"]))
-  ) %>% 
+  ) %T>% print %>%  # Tee operator, operates but returns its input
   mutate(num_adults = num_hh_members - num_children)
 
 
@@ -367,60 +343,37 @@ hh_composition <- all_egoalts %>%
 dta_path <- "E:/data/bhps/unzipped/UKDA-5151-tab/tab/"
 dta_files <- list.files(path = "E:/data/bhps/unzipped/UKDA-5151-tab/tab/", pattern = "hhresp\\.tab")
 
-all_hhlds <- llply(
+all_hhlds <- map(
   paste0(dta_path, dta_files), 
   read_delim,
   delim = "\t"
 )
+
+
+search_patterns <- c(
+  "^[A-Z]{1}HID",
+  "^[A-Z]{1}REGION$",
+  "^[A-Z]{1}LADIST",
+  "^[A-Z]{1}TENURE$",
+  "^[A-Z]{1}HSFLOOR$",
+  "^[A-Z]{1}HSTYPE$",
+  "^[A-Z]{1}HSROOM$",
+  "^[A-Z]{1}HSGDN$", # accomm has terrace /garden
+  "^[A-Z]{1}HSPRBH$", # noise from neighbours
+  "^[A-Z]{1}HSPRBI$", # street noise 
+  "^[A-Z]{1}HSPRBP$", # pollution and enviornmental problems 
+  "^[A-Z]{1}HSPRBQ$", # vandalism or crime 
+  "^[A-Z]{1}HSCTAX$", # council tax band 
+  "^[A-Z]{1}FIEQFCB$", # Equivalised household income before housing costs 
+  "^[A-Z]{1}FIEQFCA$" # Equivalised household income after housing costs 
+) %>% paste(collapse = "|")
 
 fn <- function(x){
   nms <- names(x)
   
   selection <- str_detect(
     nms , 
-    pattern = "^[A-Z]{1}HID"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}REGION$"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}LADIST"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}TENURE$"
-  ) | str_detect(
-    nms , 
-    "^[A-Z]{1}HSFLOOR$"
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSTYPE$"
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSROOM$"
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSGDN$" # accomm has terrace /garden
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSPRBH$" # noise from neighbours
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSPRBI$" # street noise 
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSPRBP$" # pollution and enviornmental problems 
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSPRBQ$" # vandalism or crime 
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}HSCTAX$" # council tax band 
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}FIEQFCB$" # Equivalised household income before housing costs 
-  ) | str_detect(
-    nms, 
-    "^[A-Z]{1}FIEQFCA$" # Equivalised household income after housing costs 
+    pattern = search_patterns
   )
   
   out <- x[,selection]
@@ -431,7 +384,7 @@ fn <- function(x){
   return(out)
 }
 
-all_hhlds_ss <- llply(
+all_hhlds_ss <- map(
   all_hhlds,
   fn
 )
@@ -447,7 +400,7 @@ fn <- function(x){
   )
   
   out <- out %>% mutate(
-    hstype = recode(
+    hstype = car::recode(
       hstype,
       "
       0 = 'other';
@@ -463,7 +416,7 @@ fn <- function(x){
       else = NA
       "              
     ),
-    region = recode(
+    region = car::recode(
       region, 
       "
       1 = 'inner london';
@@ -487,7 +440,7 @@ fn <- function(x){
       else = NA
       "
     ),
-    tenure = recode(
+    tenure = car::recode(
       tenure, 
       "
       1 = 'owned outright';
@@ -501,7 +454,7 @@ fn <- function(x){
       else = NA
       "
     ),
-    simpletenure = recode(
+    simpletenure = car::recode(
       tenure, 
       "
       c('owned outright', 'owned with mortgage') = 'owner';
@@ -510,7 +463,7 @@ fn <- function(x){
       else = NA
       "
     ),
-    simplehstype = recode(
+    simplehstype = car::recode(
       hstype, 
       "
       c('end terraced house','terraced house') = 'terraced';
@@ -535,11 +488,11 @@ fn <- function(x){
   out <- out %>% select_(~hid, ~wave, ~hstype, ~simplehstype, ~region, ~tenure, ~simpletenure,
                         ~hh_income_before_hcosts,
                         ~hh_income_after_hcosts
-  )
+  ) %>% as_data_frame
   return(out)
 }
 
-all_hhlds <- ldply(all_hhlds_ss, fn) %>% tbl_df
+all_hhlds <- map_df(all_hhlds_ss, fn)
 
 
 
@@ -549,23 +502,25 @@ all_hhlds <- ldply(all_hhlds_ss, fn) %>% tbl_df
 dta_path <- "E:/data/bhps/urban_rural/UKDA-6032-tab/tab/"
 dta_files <- list.files(path = dta_path, pattern = "[a-z]{1}ur01ind_protect\\.tab")
 
-all_urbrur <- llply(
+all_urbrur <- map(
   paste0(dta_path, dta_files), 
   read_delim,
   delim = "\t",
   col_types = "ic"
 )
+search_patterns <- c(
+  "^[a-z]{1}hid",
+  "^[a-z]{1}ur01ind$"
+) %>% paste(collapse = "|")
 
 fn <- function(x){
   nms <- names(x)
   
   selection <- str_detect(
     nms , 
-    pattern = "^[a-z]{1}hid"
-  ) | str_detect(
-    nms , 
-    "^[a-z]{1}ur01ind$"
-  ) 
+    search_patterns
+  )
+  
   out <- x[,selection]
   tmp <- names(out)
   wave <- tmp[str_detect(tmp, pattern = "^[a-z]{1}hid")]  %>% str_replace(., "hid", "")
@@ -575,7 +530,7 @@ fn <- function(x){
   return(out)
 }
 
-all_urbrur <- ldply(
+all_urbrur <- map_df(
   all_urbrur,
   fn
 )
@@ -592,7 +547,7 @@ fn <- function(x){
   out <- x
   out$ur_group <- NA
   
-  ur_scot <- recode(
+  ur_scot <- car::recode(
     x$ur01ind,
     "
     c(1, 2) = 'urban';
@@ -601,7 +556,7 @@ fn <- function(x){
     "
   )
   
-  ur_enw <- recode(
+  ur_enw <- car::recode(
     x$ur01ind,
     "
     c(1, 5) = 'urban';

@@ -24,9 +24,8 @@
 rm(list = ls())
 
 pacman::p_load(
-  plyr,
-  readr, stringr, 
-  tidyr, car, dplyr,
+  tidyverse,
+  forcats,
   ggplot2,   cowplot,
   RColorBrewer, 
   lattice, latticeExtra
@@ -37,7 +36,10 @@ pacman::p_load(
 source("Scripts/smoother_function.R")
 source("Scripts/lexis_helper_functions.R")
 
-source("scripts/manage_data.R")
+source("scripts/manage_data_bhps.R")
+source("scripts/manage_data_ukhls.R")
+
+
 source("scripts/create_graphs.R")
 
 

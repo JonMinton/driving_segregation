@@ -2659,3 +2659,9 @@ all_inds_drvs %>%
 dev.off()
 
 
+# Household composition ---------------------------------------------------
+
+
+# A straight division into one, two, or more people households
+
+
