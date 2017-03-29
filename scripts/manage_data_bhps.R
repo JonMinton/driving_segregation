@@ -577,6 +577,9 @@ fn <- function(x){
 
 
 all_hhlds <- fn(all_hhlds)
-all_inds_drvs <- all_inds_drvs %>% join(all_hhlds) %>% tbl_df
+all_inds_drvs <- all_inds_drvs %>% plyr::join(all_hhlds) %>% tbl_df
 
 all_inds_drvs <- all_inds_drvs %>% left_join(hh_composition)
+
+
+write_csv(all_inds_drvs, "data/derived/bhps_driver.csv")

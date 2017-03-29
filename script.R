@@ -36,9 +36,11 @@ pacman::p_load(
 source("Scripts/smoother_function.R")
 source("Scripts/lexis_helper_functions.R")
 
-source("scripts/manage_data_bhps.R")
-source("scripts/manage_data_ukhls.R")
+# The scripts below should be run once to extract from the BHPS and UKHLS directly
+# source("scripts/manage_data_bhps.R")
+# source("scripts/manage_data_ukhls.R")
 
+# TO DO: write a script which loads the derived UKHLS and BHPS data, and merges BHPS attributes to UKHLS
 
 source("scripts/create_graphs.R")
 

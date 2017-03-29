@@ -1,4 +1,7 @@
 
+
+all_inds_drvs <- read_csv("data/derived/bhps_plus_usosm.csv")
+
 # Graphs to produce 
 
 # Standard graphs 
@@ -43,7 +46,7 @@ all_inds_drvs %>%
       )
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)) %>% 
-  filter(year %in% c(1995, 2000, 2005)) %>%
+  filter(year %in% c(1995, 2000, 2005, 2010)) %>% # Something clearly not right
   select(sex, age_grp, year,  dlo) %>% 
   group_by(sex, age_grp, year, dlo) %>% 
   tally %>% 
@@ -373,7 +376,7 @@ all_inds_drvs %>%
   select(year, age, sex,  dlo) %>% 
   arrange(year, sex, age) %>% 
   group_by(year, sex, age) %>% 
-  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = car::recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
   filter(age <= 80 & age >= 17) %>% 
   levelplot(
