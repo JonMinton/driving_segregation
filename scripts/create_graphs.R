@@ -1,6 +1,8 @@
 
 
-all_inds_drvs <- read_csv("data/derived/bhps_plus_usosm.csv")
+# all_inds_drvs <- read_csv("data/derived/bhps_plus_usosm.csv")
+
+all_inds_drvs <- read_csv("data/derived/bhps_driver.csv")
 
 # Graphs to produce 
 
@@ -361,6 +363,8 @@ all_inds_drvs %>%
   facet_grid(highqual ~ sex)
 ggsave("figures/final_deck/06a - proportion of drivers driving - by sex, age, highest qual, and two periods - faceted.png", width = 25, height =20, units = "cm", dpi = 300)
 
+
+
 # Levelplots 
 
 # 07 - proportion of dlos  - by age, year, sex
@@ -401,6 +405,44 @@ all_inds_drvs %>%
   ) 
 dev.off()
 
+# Greyscale version of 07
+
+png(filename = "figures/final_deck/07g - proportion of dlos  - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  filter( year > 1992) %>% 
+  select(year, age, sex,  dlo) %>% 
+  arrange(year, sex, age) %>% 
+  group_by(year, sex, age) %>% 
+  mutate(does_drive = car::recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(grey(seq(0, 1, by = 0.1))),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = c(0, seq(0.5, 1., by = 0.05)),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
 
 # 08 - proportion of dlos  - by age, year, sex, urclass
 
@@ -412,7 +454,7 @@ all_inds_drvs %>%
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
   filter( year > 1992) %>% 
-  mutate(ur_group = recode(
+  mutate(ur_group = car::recode(
     ur_group, 
     "
     'urban' = 'U';
@@ -420,12 +462,12 @@ all_inds_drvs %>%
     ",
     as.factor.result =T
   ),
-  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
   ) %>%  
   select(year, age, sex, ur_group, dlo) %>% 
   arrange(year, sex, ur_group, age) %>% 
   group_by(year, sex, ur_group, age) %>% 
-  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = car::recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
   filter(age <= 80 & age >= 17) %>% 
   levelplot(
@@ -450,6 +492,103 @@ all_inds_drvs %>%
   ) 
 dev.off()
 
+
+# 08 - proportion of dlos  - by age, year, sex, urclass
+
+png(filename = "figures/final_deck/08g - proportion of dlos  - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group)) %>% 
+  filter( year > 1992) %>% 
+  mutate(ur_group = car::recode(
+    ur_group, 
+    "
+    'urban' = 'U';
+    'nonurban' = 'NU'
+    ",
+    as.factor.result =T
+  ),
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>%  
+  select(year, age, sex, ur_group, dlo) %>% 
+  arrange(year, sex, ur_group, age) %>% 
+  group_by(year, sex, ur_group, age) %>% 
+  mutate(does_drive = car::recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex + ur_group, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(grey(seq(0, 1, by = 0.1))),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = c(0, seq(0.5, 1., by = 0.05)),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
+
+# 09g - proportion of dlos  - by age, year, sex, highqual 
+png(filename = "figures/final_deck/09g - proportion of dlos  - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual)) %>% 
+  filter( year > 1992) %>% 
+  mutate(highqual = car::recode(
+    highqual, 
+    "
+    'further non-vocational' = 'High';
+    'further vocational' = 'Med';
+    'no further' = 'Low'
+    ",
+    levels = c("Low", "Med", "High"), as.factor.result =T
+  ),
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>% 
+  select(year, age, sex, highqual, dlo) %>% 
+  arrange(year, sex, highqual, age) %>% 
+  group_by(year, sex, highqual, age) %>% 
+  mutate(does_drive = car::recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drive_prop ~ year * age | sex + highqual, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(grey(seq(0, 1, by = 0.1))),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = c(0, seq(0.5, 1., by = 0.05)),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
 # 09 - proportion of dlos  - by age, year, sex, highqual 
 png(filename = "figures/final_deck/09 - proportion of dlos  - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
 
@@ -459,7 +598,7 @@ all_inds_drvs %>%
   ) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual)) %>% 
   filter( year > 1992) %>% 
-  mutate(highqual = recode(
+  mutate(highqual = car::recode(
     highqual, 
     "
     'further non-vocational' = 'High';
@@ -468,12 +607,12 @@ all_inds_drvs %>%
     ",
     levels = c("Low", "Med", "High"), as.factor.result =T
   ),
-  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
   ) %>% 
   select(year, age, sex, highqual, dlo) %>% 
   arrange(year, sex, highqual, age) %>% 
   group_by(year, sex, highqual, age) %>% 
-  mutate(does_drive = recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
+  mutate(does_drive = car::recode(dlo, "'yes' = 1; 'no' = '0'; else = NA")) %>% 
   summarise(drive_prop = mean(does_drive, na.rm=T)) %>% 
   filter(age <= 80 & age >= 17) %>% 
   levelplot(
@@ -539,6 +678,47 @@ all_inds_drvs %>%
   ) 
 dev.off()
 
+# 10g - proportion of drivers driving - by age, year, sex
+
+png(filename = "figures/final_deck/10g - proportion of drivers driving - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo)  & !is.na(cu)) %>% 
+  filter(dlo == "yes") %>% 
+  filter( year > 1992) %>% 
+  select(age, year, sex, cu) %>% 
+  group_by(age, year, sex, cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drivers_driving ~ year * age | sex, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(grey(seq(0, 1, by = 0.1))),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = c(0, seq(0.5, 1., by = 0.05)),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
 # 11 - proportion of drivers driving - by age, year, sex, urclass
 
 png(filename = "figures/final_deck/11 - proportion of drivers driving - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
@@ -590,6 +770,56 @@ all_inds_drvs %>%
   ) 
 dev.off()
 
+# 11g - proportion of drivers driving - by age, year, sex, urclass
+
+png(filename = "figures/final_deck/11g - proportion of drivers driving - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group) & !is.na(cu)) %>% 
+  filter(dlo == "yes") %>% 
+  filter( year > 1992) %>% 
+  mutate(ur_group = car::recode(
+    ur_group, 
+    "
+    'urban' = 'U';
+    'nonurban' = 'NU'
+    ",
+    as.factor.result =T
+  ),
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>%  
+  select(age, year, sex, ur_group,  cu) %>% 
+  group_by(age, year, sex, ur_group,  cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drivers_driving ~ year * age | sex + ur_group, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(grey(seq(0, 1, by = 0.1))),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = c(0, seq(0.5, 1., by = 0.05)),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
 
 # 12 - proportion of drivers driving - by age, year, sex, highqual
 
@@ -642,6 +872,97 @@ all_inds_drvs %>%
     )
   ) 
 dev.off()
+
+
+# 12g - proportion of drivers driving - by age, year, sex, highqual
+
+png(filename = "figures/final_deck/12g - proportion of drivers driving - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
+
+all_inds_drvs %>% 
+  mutate(
+    year = wave + 1990
+  ) %>% 
+  filter( year > 1992) %>% 
+  filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual) & !is.na(cu)) %>% 
+  filter(dlo == "yes") %>% 
+  mutate(highqual = car::recode(
+    highqual, 
+    "
+    'further non-vocational' = 'High';
+    'further vocational' = 'Med';
+    'no further' = 'Low'
+    ",
+    levels = c("Low", "Med", "High"), as.factor.result =T
+  ),
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
+  ) %>% 
+  select(age, year, sex, highqual,  cu) %>% 
+  group_by(age, year, sex, highqual,  cu) %>% 
+  tally %>% 
+  spread(cu, n, fill = 0) %>% 
+  mutate(
+    drivers_driving = yes / (yes + no)
+  ) %>% 
+  filter(age <= 80 & age >= 17) %>% 
+  levelplot(
+    drivers_driving ~ year * age | sex + highqual, 
+    data=., 
+    aspect = "iso",
+    strip=strip.custom(par.strip.text=list(cex=1.4, fontface="bold"), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(grey(seq(0, 1, by = 0.1))),
+    main=NULL,
+    colorkey = list(labels= list(cex = 1.4)),
+    at = c(0, seq(0.5, 1., by = 0.05)),
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=1.1, rot = 90), 
+      y=list(cex=1.1),
+      alternating=3
+    )
+  ) 
+dev.off()
+
+
+# Tables by cohort 
+
+# What do I want? 
+
+# For birth cohorts in five year groupings, 
+# 1950-54, 1955-59, 1960-64, 1965-69, 1970-74, 1975-79, 1980-84, 1985-89
+
+# For ages 
+# 25-40
+
+all_inds_drvs %>% 
+  mutate(year = wave + 1990) %>% 
+  mutate(birth_year = year - age) %>% 
+  mutate(
+    birth_year_group = cut(
+      birth_year, 
+      breaks = c(0, seq(1950, 1990, by = 5))
+    )
+  ) %>% 
+  filter(age %in% c(25, 30, 35, 40)) %>% 
+  select(sex, birth_year_group, age, dlo) %>%
+  group_by(sex, birth_year_group, age) %>% 
+  summarise(
+    has_dlo = length(dlo[dlo == "yes"]),
+    no_dlo = length(dlo[dlo == "no"]),
+    prop_dlo = has_dlo / (has_dlo + no_dlo)
+  ) %>% 
+  arrange(sex, birth_year_group, age) %>% 
+  mutate(summaries = paste0(has_dlo, "/", no_dlo, " (", round(prop_dlo, 2), ")")) %>% 
+  select(sex, birth_year_group, age, summaries) %>% 
+  spread(age, summaries) %>% 
+  write_csv("tables/birth_year_props.csv")
+
+
+
+
 
 
 
