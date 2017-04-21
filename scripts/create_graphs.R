@@ -369,7 +369,6 @@ ggsave("figures/final_deck/06a - proportion of drivers driving - by sex, age, hi
 
 # 07 - proportion of dlos  - by age, year, sex
 
-png(filename = "figures/final_deck/07 - proportion of dlos  - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -402,12 +401,13 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+png(filename = "figures/final_deck/07 - proportion of dlos  - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 # Greyscale version of 07
 
-png(filename = "figures/final_deck/07g - proportion of dlos  - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -440,13 +440,14 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) ->
+png(filename = "figures/final_deck/07g - proportion of dlos  - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 
 # 08 - proportion of dlos  - by age, year, sex, urclass
 
-png(filename = "figures/final_deck/08 - proportion of dlos  - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -489,13 +490,15 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/08 - proportion of dlos  - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 
 # 08 - proportion of dlos  - by age, year, sex, urclass
 
-png(filename = "figures/final_deck/08g - proportion of dlos  - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -538,12 +541,13 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+png(filename = "figures/final_deck/08g - proportion of dlos  - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 
 # 09g - proportion of dlos  - by age, year, sex, highqual 
-png(filename = "figures/final_deck/09g - proportion of dlos  - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -587,10 +591,13 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+png(filename = "figures/final_deck/09g - proportion of dlos  - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
+
+
 # 09 - proportion of dlos  - by age, year, sex, highqual 
-png(filename = "figures/final_deck/09 - proportion of dlos  - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -634,12 +641,14 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/09 - proportion of dlos  - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 # 10 - proportion of drivers driving - by age, year, sex
 
-png(filename = "figures/final_deck/10 - proportion of drivers driving - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -675,12 +684,14 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/10 - proportion of drivers driving - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 # 10g - proportion of drivers driving - by age, year, sex
 
-png(filename = "figures/final_deck/10g - proportion of drivers driving - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -716,12 +727,14 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/10g - proportion of drivers driving - by age, year, sex.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 # 11 - proportion of drivers driving - by age, year, sex, urclass
 
-png(filename = "figures/final_deck/11 - proportion of drivers driving - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -730,15 +743,15 @@ all_inds_drvs %>%
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(ur_group) & !is.na(cu)) %>% 
   filter(dlo == "yes") %>% 
   filter( year > 1992) %>% 
-  mutate(ur_group = recode(
+  mutate(ur_group = car::recode(
     ur_group, 
     "
     'urban' = 'Urb';
     'nonurban' = 'Non Urb'
     ",
     as.factor.result =T
-  ),
-  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+    ),
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
   ) %>%  
   select(age, year, sex, ur_group,  cu) %>% 
   group_by(age, year, sex, ur_group,  cu) %>% 
@@ -767,12 +780,14 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/11 - proportion of drivers driving - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 # 11g - proportion of drivers driving - by age, year, sex, urclass
 
-png(filename = "figures/final_deck/11g - proportion of drivers driving - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -818,12 +833,13 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/11g - proportion of drivers driving - by age, year, sex, urclass.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 # 12 - proportion of drivers driving - by age, year, sex, highqual
-
-png(filename = "figures/final_deck/12 - proportion of drivers driving - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -832,7 +848,7 @@ all_inds_drvs %>%
   filter( year > 1992) %>% 
   filter(!is.na(sex) & !is.na(age) & !is.na(year) & !is.na(dlo) & !is.na(highqual) & !is.na(cu)) %>% 
   filter(dlo == "yes") %>% 
-  mutate(highqual = recode(
+  mutate(highqual = car::recode(
     highqual, 
     "
     'further non-vocational' = 'High';
@@ -841,7 +857,7 @@ all_inds_drvs %>%
     ",
     levels = c("Low", "Med", "High"), as.factor.result =T
   ),
-  sex = recode(sex, "'male' = 'M'; 'female' = 'F'")
+  sex = car::recode(sex, "'male' = 'M'; 'female' = 'F'")
   ) %>% 
   select(age, year, sex, highqual,  cu) %>% 
   group_by(age, year, sex, highqual,  cu) %>% 
@@ -870,13 +886,14 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/12 - proportion of drivers driving - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 
 # 12g - proportion of drivers driving - by age, year, sex, highqual
-
-png(filename = "figures/final_deck/12g - proportion of drivers driving - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
 
 all_inds_drvs %>% 
   mutate(
@@ -923,7 +940,10 @@ all_inds_drvs %>%
       y=list(cex=1.1),
       alternating=3
     )
-  ) 
+  ) -> p
+
+png(filename = "figures/final_deck/12g - proportion of drivers driving - by age, year, sex, highqual.png", width = 18, height = 35, units = "cm", res = 300)
+print(p)
 dev.off()
 
 
@@ -937,33 +957,33 @@ dev.off()
 # For ages 
 # 25-40
 
-all_inds_drvs %>% 
-  mutate(year = wave + 1990) %>% 
-  mutate(birth_year = year - age) %>% 
-  mutate(
-    birth_year_group = cut(
-      birth_year, 
-      breaks = c(0, seq(1950, 1990, by = 5))
-    )
-  ) %>% 
-  filter(age %in% c(25, 30, 35, 40)) %>% 
-  select(sex, birth_year_group, age, dlo) %>%
-  group_by(sex, birth_year_group, age) %>% 
-  summarise(
-    has_dlo = length(dlo[dlo == "yes"]),
-    no_dlo = length(dlo[dlo == "no"]),
-    prop_dlo = has_dlo / (has_dlo + no_dlo)
-  ) %>% 
-  arrange(sex, birth_year_group, age) %>% 
-  mutate(summaries = paste0(has_dlo, "/", no_dlo, " (", round(prop_dlo, 2), ")")) %>% 
-  select(sex, birth_year_group, age, summaries) %>% 
-  spread(age, summaries) %>% 
-  write_csv("tables/birth_year_props.csv")
-
-
-
-
-
+# all_inds_drvs %>% 
+#   mutate(year = wave + 1990) %>% 
+#   mutate(birth_year = year - age) %>% 
+#   mutate(
+#     birth_year_group = cut(
+#       birth_year, 
+#       breaks = c(0, seq(1950, 1990, by = 5))
+#     )
+#   ) %>% 
+#   filter(age %in% c(25, 30, 35, 40)) %>% 
+#   select(sex, birth_year_group, age, dlo) %>%
+#   group_by(sex, birth_year_group, age) %>% 
+#   summarise(
+#     has_dlo = length(dlo[dlo == "yes"]),
+#     no_dlo = length(dlo[dlo == "no"]),
+#     prop_dlo = has_dlo / (has_dlo + no_dlo)
+#   ) %>% 
+#   arrange(sex, birth_year_group, age) %>% 
+#   mutate(summaries = paste0(has_dlo, "/", no_dlo, " (", round(prop_dlo, 2), ")")) %>% 
+#   select(sex, birth_year_group, age, summaries) %>% 
+#   spread(age, summaries) %>% 
+#   write_csv("tables/birth_year_props.csv")
+# 
+# 
+# 
+# 
+# 
 
 
 # Graphs - individual level -----------------------------------------------
