@@ -2,4 +2,4 @@
 
 ## Introduction
 
-This github repository contains the code used to produce the results described in our contribution to (Curl & Musselwhite's *Geographies of Transport and Ageing*)[https://www.palgrave.com/gp/book/9783319763590#aboutBook]
+This github repository contains the code used to produce the results described in our contribution to [Curl & Musselwhite's *Geographies of Transport and Ageing*](https://www.palgrave.com/gp/book/9783319763590#aboutBook)
