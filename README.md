@@ -19,11 +19,13 @@ The [British Household Panel Survey](https://www.iser.essex.ac.uk/bhps) was used
 ## Colour versions of figures 
 
 Figure 2.1a - Proportion of all BHPS sample members who have driving licences, by gender 
+![Figure 2.1a](https://github.com/JonMinton/driving_segregation/raw/master/figures/final_deck/10%20-%20proportion%20of%20drivers%20driving%20-%20by%20age%2C%20year%2C%20sex.png)
 
 Figure 2.1b: - Proportion of all BHPS sample members who have driving licences, by gender and highest educational qualification
-
+![Figure 2.1b](https://github.com/JonMinton/driving_segregation/raw/master/figures/final_deck/09%20-%20proportion%20of%20dlos%20%20-%20by%20age%2C%20year%2C%20sex%2C%20highqual.png)
 
 Figure 2.2a - Proportion of all BHPS sample members with driving licences *who also have access to a car*, by gender
+![Figure 2.2a](https://github.com/JonMinton/driving_segregation/raw/master/figures/final_deck/10%20-%20proportion%20of%20drivers%20driving%20-%20by%20age%2C%20year%2C%20sex.png)
 
 Figure 2.2b - Proportion of all BHPS sample members with driving licences *who also have access to a car*, by gender and highest educational qualification
 ![Figure 2.2b](https://github.com/JonMinton/driving_segregation/raw/master/figures/final_deck/12%20-%20proportion%20of%20drivers%20driving%20-%20by%20age%2C%20year%2C%20sex%2C%20highqual.png) 
